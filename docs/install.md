@@ -1,139 +1,114 @@
 # Installation and controls
 
-The player download includes the three trained policies and setup tools.
-Setup reads your installed game, verifies its Gwent resources, and creates the
-modified screen locally. Once installed, the opponent runs inside the game.
+The prebuilt player package includes the finished modified Gwent screen and
+all three trained policies. The opponent runs locally inside the game.
+Python, Java, Node.js and model-training tools are not required to play.
 
 ## Requirements
 
-- An x64 Windows or Linux installation of The Witcher 3 with matching
-  Remastered Gwent resources. Classic 1.32 is unsupported.
-- Python 3.12 or newer.
-- Internet access for the first setup, unless the required tools are already
-  installed or cached. Setup can use an existing JDK 11+ and Node.js 24+;
-  otherwise it downloads verified tools. [Tool details](tool-downloads.md).
+- The Witcher 3: Wild Hunt — Remastered, with compatible Gwent resources.
+  Classic 1.32 is unsupported.
+- One active installation of this mod. Remove an older manual installation
+  before switching to a mod manager or Workshop subscription.
 
-PyTorch, model training, a Java service and an AI subscription are not needed
-to play. Build tools are used only during preparation. Other mods that replace
-`gwint_game.redswf`, the Gwent screen, conflict; script merging cannot combine
-two replacement screens. The installer reports detected conflicts before writing.
+Other mods replacing `gwint_game.redswf`, the Gwent screen, can conflict.
+Script merging cannot combine two replacement screens.
 
-## Install the player download
+## Install
 
-1. Download the player ZIP and `.sha256` from the release page.
-2. Extract the entire ZIP to a writable folder. Keep it after installation:
-   `.runtime` will hold the receipt and backups needed for removal.
-3. Close The Witcher 3 and REDlauncher.
-4. Run `Install.cmd` on Windows, or `sh Install.sh` on Linux.
-5. Enter the game folder containing `bin` and `content` when asked. For Steam,
-   **Manage > Browse local files** opens that folder.
+Close the game and REDlauncher before installation or updates.
 
-Setup verifies the download and game, prepares the mod, checks its compiled
-policy data, then installs it with backups. Progress and errors remain in the
-terminal. If a compatibility check fails, retain the error and resolve the
-cause before retrying; do not bypass the pins. A permission error in the game
-folder may require an elevated terminal, using the same extracted mod folder.
+When a **Steam Workshop** listing is available, subscribe and let Steam finish
+its download. In the game, check **Settings > Gameplay**: mods and Steam
+Workshop mods must be enabled.
 
-You can also use PowerShell or a Linux terminal directly:
+When a **Nexus** listing is available, choose **Mod Manager Download**, install the
+mod in Vortex, then enable and deploy it. If you downloaded the native ZIP
+from GitHub, use Vortex's **Install From File** instead. The archive uses the
+same layout for both routes. Local mods must be enabled in the game's
+**Settings > Gameplay** options.
 
-```powershell
-py -3 scripts/setup_player.py --game-dir "C:\Program Files (x86)\Steam\steamapps\common\The Witcher 3"
-```
+Start the game and open **Settings > Mods > Gwent: Trained Opponents**.
+**Enable AI** is on by default. Use **Gameplay > Gwent difficulty** to choose
+the challenge. No separate settings XML or configuration-file copying is needed.
 
-```sh
-python3 scripts/setup_player.py --game-dir "/path/to/The Witcher 3"
-```
-
-On Windows, use `python` instead of `py -3` if Python is installed without
-the launcher. `--check` checks the download and compatible game without
-installing. `--prepare-only` prepares a package without changing the game.
-`--offline` uses supported installed tools and verified cached downloads.
-
-On first launch, retain any script compilation error and close the game if
-compilation fails. Load a save and open
-**Settings > Mods > Gwent: Trained Opponents**.
+The main-menu **MODS** button opens the game's separate online mod browser.
+Use **Settings > Mods** for this mod's controls.
 
 ## Controls
 
 | Control | Effect |
 |---|---|
 | Enable AI | Trained AI when on, stock AI when off, for story and practice |
-| Gameplay > Gwent difficulty | The game's existing setting chooses native NPC deck level and the policy for both story and practice; Normal selects the Medium policy |
-| Practice opponent | Chooses the native opponent collection for practice |
-| Start practice match | Button that opens deck selection from a loaded game's pause menu, outside combat and dialogue |
-
-Practice uses your current collection and restores its temporary manager,
-result and tutorial state on completion or cancellation. It does not grant an
-NPC quest reward or wager. Native achievement callbacks remain enabled;
-actual achievement delivery has not been verified.
+| Gameplay > Gwent difficulty | The game's existing setting chooses the native NPC deck level and the policy for both story and practice; Normal selects the Medium policy |
+| Practice opponent / deck | Chooses the native opponent collection for practice |
+| Start practice match | Opens deck selection from a loaded game's pause menu, outside combat and dialogue |
+| Show AI status | Shows current settings and the latest recorded match |
+| Show decision source | Optional network, fallback and stock-handoff messages |
+| Record public play-by-play | Optional local recording of public actions and results |
 
 The player mod has no coaching, hints, win-chance meter or postgame analysis.
-There is no think-time scale or added wait; loading, computation, game
-animations and banners still take real time.
+There is no added thinking delay; loading, computation, game animations and
+banners still take real time.
+
+Practice uses your current collection and restores its temporary manager,
+result and tutorial state on completion or cancellation. It does not grant
+an NPC quest reward or wager. Native achievement callbacks remain enabled;
+actual achievement delivery has not been verified.
+
+## Check that the trained opponent is playing
+
+Play a match, then open **Show AI status**. Its current-settings section and
+latest-match section are separate. The latest match reports the selected
+policy and decision sources, so enabling the mod alone is not treated as proof
+that the network played.
+
+**Show decision source** displays `network`, `greedy-fallback` or a stock
+handoff. A fallback means the trained policy did not complete that decision.
+A missing banner alone does not prove that the mod is absent: the banner
+setting may be off.
 
 ## Troubleshooting
 
-Open the troubleshooting group at the end of the mod menu:
+Retain any script compilation error and close the game if compilation fails.
+Check for a second installation or another Gwent-screen replacement before
+retrying. Do not replace the game's own bundles to install this mod.
 
-- **Show AI status (current / latest match)** opens a report with current settings
-  and the latest recorded match, including source counts even when banners are off.
-- **Show decision source** displays `network`, `greedy-fallback` or a stock
-  handoff. A fallback means the trained policy did not complete that decision.
-- **Record public play-by-play** saves public events locally. New records include
-  mode, opponent identifier, requested/effective tier and model hashes.
+For a report, include the mod version, game version, installation method and
+an **AI status** screenshot after the affected match. Optional public recording
+stores actions, settled boards, results and policy identity in the game's
+settings. It excludes hidden cards, deck order and unrevealed choices. Nothing
+uploads automatically. Review local paths before sharing files.
 
-A missing banner alone does not prove that the mod is absent. The main switch
-or signal setting may be off. Check verification after an actual match.
-
-From the extracted download folder, obtain a settings report:
-
-```powershell
-py -3 scripts/setup_player.py --report --game-dir "C:\path\to\The Witcher 3" --documents "$HOME\Documents\The Witcher 3"
-```
-
-Use the actual Documents location, including OneDrive redirection if present.
-To export the public timeline from the active settings file:
-
-```powershell
-py -3 scripts/harvest_playtrace.py "C:\path\to\Documents\The Witcher 3\dx12user.settings"
-```
-
-Reports can contain local filesystem paths; review them before sharing.
-The public recorder excludes hidden cards and deck order, so it cannot fully
-reconstruct a deal or prove that a tactical choice was wrong. No upload runs
-automatically.
+Developers can export a recorded timeline with the source utility
+`scripts/harvest_playtrace.py`. These optional development tools use Python;
+they are not needed for installation or play.
 
 ## Update and remove
 
-Keep the current extracted folder and its backups. To prepare an update while
-the current version remains installed, extract the new download into a separate
-folder. From that new folder, name the folder used for the current installation:
+For Workshop, let Steam update the subscribed item while the game is closed.
+Unsubscribe to remove it, then restart the game. Steam may retain cached
+content separately from the subscription state.
 
-```powershell
-py -3 scripts/setup_player.py --prepare-only --installed-from "C:\path\to\current mod folder" --game-dir "C:\path\to\The Witcher 3"
-```
+For Vortex, replace the installed version with the new download, then deploy.
+To remove it, disable and remove it in Vortex, then deploy the change. Keep
+unrelated mods enabled or disabled according to your own setup.
 
-```sh
-python3 scripts/setup_player.py --prepare-only --installed-from "/path/to/current mod folder" --game-dir "/path/to/The Witcher 3"
-```
+## Upgrade from the earlier Python installer
 
-Setup verifies the old receipt and all installed files before preparing the new
-package. It leaves the current installation and its receipt in the old folder.
-After preparation succeeds, remove the old version using its original folder,
-then run the new folder's install launcher. Removal is always explicit.
-
-`--installed-from` is available only with `--check` or `--prepare-only`.
-Preparing again in the folder that owns the current installation needs only
-`--prepare-only`, without naming another folder.
-
-Close the game and REDlauncher, then run `Uninstall.cmd` or `sh Uninstall.sh`
-from the folder used to install. Alternatively:
+The older installer owns its files through the receipt and backups in its
+original extracted folder. Close the game and REDlauncher, then run
+**Uninstall.cmd** on Windows or **sh Uninstall.sh** on Linux from that folder.
+Alternatively, from that same folder:
 
 ```sh
 python3 scripts/setup_player.py --uninstall
 ```
 
-The installer verifies its receipt and installed hashes, restores backed-up
-files and removes only its installed files. It refuses unexpected edits.
-Backups and saves remain. Generated script caches are invalidated so the
-game compiles the current mod set on its next start.
+The old installer checks its receipt and installed hashes, restores backups
+and removes its owned files, including the former settings XML. Keep that
+folder until removal succeeds. Then install the prebuilt package through
+your chosen manager. Installing over the old files can leave duplicate
+versions or restore the old version when a manager later removes its own copy.
+
+[Build from source](building.md) describes the separate developer workflow.

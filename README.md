@@ -54,25 +54,26 @@ using its own hand and the public board. It needs no server or AI subscription.
 | Training method | Self-play reinforcement learning using PPO |
 | Network size | Approximately 1.98 million parameters per model |
 | Difficulty levels | Easy, Medium, Hard |
-| Player download | Approximately 22.5 MB, including all three models |
+| Prebuilt player download | Approximately 31.6 MB, including all three models |
 | In-game execution | Local inference; no server or subscription |
 
 ## Install
 
-1. Download the player ZIP and its checksum from the
+1. Download the **prebuilt native ZIP** and its checksum from the
    [latest release](https://github.com/brittain9/gwent-ai-witcher3-mod/releases/latest).
-2. Install **Python 3.12+** if needed, extract the whole ZIP to a writable folder,
-   and close the game and REDlauncher.
-3. On **Windows**, open `Install.cmd`. On **Linux**, run `sh Install.sh`.
-   Select the game folder containing `bin` and `content` when asked.
+2. Close the game and REDlauncher.
+3. For a ZIP download, use Vortex's **Install From File**, then enable and
+   deploy the mod. For a Workshop download, subscribe and let Steam finish
+   installing it. Enable local or Workshop mods in the game's Gameplay settings.
 4. Start the game, load a save, and open **Settings > Mods > Gwent: Trained Opponents**.
-   Turn on **Enable AI**.
+   **Enable AI** is on by default. Choose the challenge through the game's
+   **Gameplay > Gwent difficulty** setting.
 
-First setup downloads verified build tools when needed and creates the mod
-from your installed game's resources. Models are included in the player
-download; PyTorch and training tools are not needed. The finished opponent
-runs inside the game. Keep the extracted folder: it holds your installation
-receipt and rollback backups.
+The package includes the finished modified Gwent screen and all three policies.
+Python, Java, Node.js and training tools are not needed to play. If you used
+the earlier Python installer, uninstall that version using its original
+download folder before installing this package. Keep one installation of
+this mod active at a time.
 
 [Installation, compatibility and removal](docs/install.md) ·
 [Build from source](docs/building.md) · [Changelog](CHANGELOG.md)
@@ -95,10 +96,10 @@ trained policies, rather than granting hidden information or changing cards.
 
 ## Compatibility and limits
 
-Setup checks the exact Gwent resources required by the mod. The supported
-resource set is from the Remastered edition; executable patch labels alone
-do not determine compatibility. Classic 1.32 is unsupported. Another mod that
-replaces the Gwent screen can conflict.
+The prebuilt package targets compatible Remastered Gwent resources. Tested
+game versions are listed in the release notes; executable patch labels alone
+do not determine resource compatibility. Classic 1.32 is unsupported. Another
+mod that replaces the Gwent screen can conflict.
 
 The preceding preview was played on Windows and Linux through Steam/Proton.
 This release's tested platforms and build identity are listed in its

@@ -48,15 +48,17 @@ The recorder publishes a card's identity only after its native action commits.
 It records public results and selection/model identity, while excluding hidden
 hands, deck order and unrevealed choices.
 
-## Local preparation and verification
+## Packaging and verification
 
-The player download contains original integration code and learned float32
-parameters. Setup derives the card vocabulary and effect tables from the
-player's compatible game, generates model headers locally, and compiles the
-modified Gwent screen.
+The prebuilt player package contains the modified Gwent screen, original
+integration scripts and all three trained policies. During the release build,
+the tools derive the card vocabulary and effect tables from a compatible
+game, generate the model headers and compile the modified screen. Players
+receive the finished files. The source build tools can also perform this
+preparation locally.
 
-Before installation, checks compare Python reference outputs with ActionScript
-on deterministic fictional positions. Compilation checks repeat inference
+During the release build, verification compares Python reference outputs with
+ActionScript on deterministic fictional positions. Compilation checks repeat inference
 checks against re-exported code and verify embedded tensor bytes, encoding
 tables, timer bindings and class initialization. These test encoding and
 integration; they do not measure playing strength or certify every game path.
