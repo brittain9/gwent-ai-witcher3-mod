@@ -317,6 +317,8 @@ def ensure_tool(
 ) -> Path:
     destination = tools_dir / spec.name
     archive_cache = tools_dir / "archives" / f"{spec.sha256}.{spec.kind}"
+    if archive_cache.is_symlink() or archive_cache.parent.is_symlink():
+        raise SetupError("The archive cache must not be a symlink")
     if destination.is_symlink():
         raise SetupError(f"Tool cache {destination.name} is a symlink")
     if destination.exists() or destination.is_symlink():
@@ -344,7 +346,12 @@ def ensure_tool(
                 "Keep it for inspection and extract the release into a new folder."
             )
         return destination / spec.executable
-    if offline:
+    cached = archive_cache.exists()
+    if cached and (
+        not archive_cache.is_file() or file_hash(archive_cache) != spec.sha256
+    ):
+        raise SetupError(f"The cached {spec.name} archive changed (SHA-256 mismatch)")
+    if offline and not cached:
         raise SetupError(
             f"{spec.name} {spec.version} is not cached; rerun without --offline"
         )
@@ -354,11 +361,18 @@ def ensure_tool(
     ) as value:
         temporary = Path(value)
         archive = temporary / ("tool." + spec.kind)
-        print(
-            f"Downloading {spec.name} {spec.version} from its official distribution...",
-            flush=True,
-        )
-        download(spec.url, archive)
+        if cached:
+            print(
+                f"Preparing {spec.name} {spec.version} from its verified archive...",
+                flush=True,
+            )
+            shutil.copyfile(archive_cache, archive)
+        else:
+            print(
+                f"Downloading {spec.name} {spec.version} from its official distribution...",
+                flush=True,
+            )
+            download(spec.url, archive)
         if not archive.is_file() or file_hash(archive) != spec.sha256:
             raise SetupError(
                 f"{spec.name} download SHA-256 does not match the pinned release"

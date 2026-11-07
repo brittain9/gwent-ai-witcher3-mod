@@ -21,6 +21,75 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ToolArchiveTests(unittest.TestCase):
+    def cached_archive(self, root):
+        source = root / "original.zip"
+        with zipfile.ZipFile(source, "w") as output:
+            output.writestr("ffdec-cli.jar", b"loader")
+            output.writestr("lib/compiler.jar", b"compiler")
+        digest = hashlib.sha256(source.read_bytes()).hexdigest()
+        spec = setup_player.ToolArchive(
+            "ffdec",
+            "1",
+            "https://example.invalid/tool.zip",
+            digest,
+            "ffdec-cli.jar",
+            "zip",
+            "",
+        )
+        archive = root / "tools/archives" / f"{digest}.zip"
+        archive.parent.mkdir(parents=True)
+        shutil.copyfile(source, archive)
+        return spec, archive
+
+    def test_verified_archive_alone_can_restore_an_absent_tool_offline(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            spec, archive = self.cached_archive(root)
+            with patch.object(setup_player, "download_file") as download:
+                executable = setup_player.ensure_tool(
+                    spec,
+                    root / "tools",
+                    offline=True,
+                    download=download,
+                )
+            download.assert_not_called()
+            self.assertEqual(executable.read_bytes(), b"loader")
+            self.assertEqual(
+                (executable.parent / "lib/compiler.jar").read_bytes(), b"compiler"
+            )
+            self.assertEqual(
+                hashlib.sha256(archive.read_bytes()).hexdigest(), spec.sha256
+            )
+            self.assertEqual(
+                setup_player.ensure_tool(spec, root / "tools", offline=True), executable
+            )
+
+    def test_corrupt_original_archive_is_preserved_and_never_restored(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            spec, archive = self.cached_archive(root)
+            archive.write_bytes(b"damaged original archive")
+            with self.assertRaisesRegex(
+                setup_player.SetupError, "SHA-256|archive changed"
+            ):
+                setup_player.ensure_tool(spec, root / "tools", offline=True)
+            self.assertFalse((root / "tools/ffdec").exists())
+            self.assertEqual(archive.read_bytes(), b"damaged original archive")
+
+    def test_original_archive_symlink_is_never_restored(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            spec, archive = self.cached_archive(root)
+            archive.unlink()
+            try:
+                archive.symlink_to(root / "original.zip")
+            except OSError as exc:
+                self.skipTest(f"This filesystem cannot create the test symlink: {exc}")
+            with self.assertRaisesRegex(setup_player.SetupError, "symlink"):
+                setup_player.ensure_tool(spec, root / "tools", offline=True)
+            self.assertFalse((root / "tools/ffdec").exists())
+            self.assertTrue(archive.is_symlink())
+
     def test_zip_paths_cannot_escape_or_install_a_symlink(self):
         for name in ("../escape", "C:/escape", "safe/../../escape", "safe\\..\\escape"):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
