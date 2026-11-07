@@ -1625,7 +1625,7 @@ def _difficulty_ladder(tier_policies: dict[str, dict[str, Any]]) -> dict[str, An
         for fact_value, tier in enumerate(TIER_NAMES, start=1)
     }
     return {
-        "selection": "Easy, Medium and Hard follow the game's Gwent difficulty; practice can select the policy separately.",
+        "selection": "Easy, Medium and Hard follow the game's Gwent difficulty in both story and practice matches.",
         "vanilla_difficulty_fact": "gwent_difficulty",
         "vanilla_fact_values": {"easy": 1, "normal": 2, "hard": 3},
         "unset_fact_value": 0,
