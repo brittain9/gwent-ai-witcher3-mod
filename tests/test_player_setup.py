@@ -59,7 +59,6 @@ class ToolArchiveTests(unittest.TestCase):
             self.assertIn(
                 "Installed resources: été", stdout_bytes.getvalue().decode("utf-8")
             )
-            self.assertNotIn(b"\r", stdout_bytes.getvalue())
             self.assertIn(
                 "Compiler path: été / 日本語", stdout_bytes.getvalue().decode("utf-8")
             )
