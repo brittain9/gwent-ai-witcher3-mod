@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare and install A Worthy Opponent from a player download."""
+"""Prepare and install Trained Opponents from a player download."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ MAX_ARCHIVE_FILES = 30_000
 FFDEC_VERSION = "26.4.0"
 NODE_VERSION = "24.11.1"
 JAVA_VERSION = "21.0.13+9"
-JAVA_SOURCE_MARKER = "WORTHY_OPPONENT_JAVA_SOURCE_OK été 日本語"
+JAVA_SOURCE_MARKER = "TRAINED_OPPONENTS_JAVA_SOURCE_OK été 日本語"
 
 
 class SetupError(RuntimeError):
@@ -235,7 +235,7 @@ def download_file(url: str, target: Path) -> None:
     if urllib.parse.urlparse(url).scheme != "https":
         raise SetupError("Tool downloads require HTTPS")
     request = urllib.request.Request(
-        url, headers={"User-Agent": "A-Worthy-Opponent/0.1.0"}
+        url, headers={"User-Agent": "Gwent-Trained-Opponents/0.1.1"}
     )
     try:
         with (
@@ -417,10 +417,10 @@ def ensure_tool(
 def _source_compiler_available(java: Path) -> bool:
     marker = JAVA_SOURCE_MARKER
     try:
-        with tempfile.TemporaryDirectory(prefix="worthy-opponent-java-") as value:
-            source = Path(value) / "WorthyOpponentJavaCheck.java"
+        with tempfile.TemporaryDirectory(prefix="trained-opponents-java-") as value:
+            source = Path(value) / "TrainedOpponentsJavaCheck.java"
             source.write_text(
-                "class WorthyOpponentJavaCheck {"
+                "class TrainedOpponentsJavaCheck {"
                 " public static void main(String[] args) {"
                 f' System.out.print("{marker}");'
                 f' System.err.print("{marker}");'
@@ -826,7 +826,7 @@ def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
         else:
             install(root, game_dir, package)
             print(
-                "Ready. Load a save, open Settings > Mods > Gwent: A Worthy Opponent, and enable AI."
+                "Ready. Load a save, open Settings > Mods > Gwent: Trained Opponents, and enable AI."
             )
         return 0
     except (SetupError, OSError, ValueError, subprocess.SubprocessError) as exc:

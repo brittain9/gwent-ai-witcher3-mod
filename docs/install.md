@@ -51,7 +51,7 @@ installing. `--prepare-only` prepares a package without changing the game.
 
 On first launch, retain any script compilation error and close the game if
 compilation fails. Load a save and open
-**Settings > Mods > Gwent: A Worthy Opponent**.
+**Settings > Mods > Gwent: Trained Opponents**.
 
 ## Controls
 

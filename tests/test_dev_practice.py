@@ -213,7 +213,7 @@ for(const enabled of [false,true]) for(const [tierIndex,tier] of [[0,1],[1,2],[2
     f.env.GwaiVerificationText = () => 'Current configuration<br>Latest recorded match';
     f.env.theGame.GetGuiManager = () => ({ ShowUserDialogAdv(...args) { dialogs.push(args); } });
     assert.equal(run('OnButtonClicked', f.env), true);
-    assert.deepEqual(dialogs[0], [0, 'Gwent: A Worthy Opponent', 'Current configuration<br>Latest recorded match', false, 'OK']);
+    assert.deepEqual(dialogs[0], [0, 'Gwent: Trained Opponents', 'Current configuration<br>Latest recorded match', false, 'OK']);
     assert.equal(Object.hasOwn(f.values,'GwaiDevReport'),false);
     assert.equal(f.m.gameRequested, false);
     assert.deepEqual(f.events, ['wrapped']);

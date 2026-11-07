@@ -34,7 +34,7 @@ except ModuleNotFoundError:
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD_ID = "0.1.0"
+BUILD_ID = "0.1.1"
 AS3_DIR = ROOT / "mod/ai/as3"
 OUTPUT_DIR = ROOT / ".runtime/mod-build"
 RECORDER_OUTPUT_DIR = ROOT / ".runtime/mod-build-recorder"

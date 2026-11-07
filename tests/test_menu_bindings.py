@@ -153,8 +153,8 @@ const env = {isMainMenu:false,wrappedMethod(){events.push('native')},
 env.GwaiNameOptions = (entries,groupID)=>new Function('env','entries','groupID','with(env){'+bodies.GwaiNameOptions+'}')(env,entries,groupID);
 new Function('env','with(env){'+bodies.showOptionsPanel+'}')(env);
 assert.deepEqual(events,['native','gather','publish']);
-assert.equal(own.values.label,'Gwent: A Worthy Opponent');
-assert.equal(own.values.listTitle,'Gwent: A Worthy Opponent');
+assert.equal(own.values.label,'Gwent: Trained Opponents');
+assert.equal(own.values.listTitle,'Gwent: Trained Opponents');
 assert.equal(own.values.id,'mainmenu_gwent');
 assert.equal(unrelated.values.label,'Unrelated Gwent');
 assert.equal(other.values.label,'Gameplay');

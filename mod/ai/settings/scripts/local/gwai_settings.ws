@@ -177,8 +177,8 @@ function GwaiNameOptions(entries : CScriptedFlashArray, groupID : int) : void
                     child = children.GetElementFlashObject(childIndex);
                     if (child && child.GetMemberFlashInt("groupID") == groupID)
                     {
-                        optionGroup.SetMemberFlashString("label", "Gwent: A Worthy Opponent");
-                        optionGroup.SetMemberFlashString("listTitle", "Gwent: A Worthy Opponent");
+                        optionGroup.SetMemberFlashString("label", "Gwent: Trained Opponents");
+                        optionGroup.SetMemberFlashString("listTitle", "Gwent: Trained Opponents");
                     }
                 }
             }
@@ -216,7 +216,7 @@ function OnButtonClicked(groupId : int, optionName : name)
     }
     if (optionName == 'GwaiDevReport')
     {
-        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", GwaiVerificationText(), false, UDB_Ok);
+        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: Trained Opponents", GwaiVerificationText(), false, UDB_Ok);
         return true;
     }
     if (optionName != 'GwaiDevStart')
@@ -226,18 +226,18 @@ function OnButtonClicked(groupId : int, optionName : name)
     pauseMenu = (CR4CommonIngameMenu)GetRootMenu();
     if (isMainMenu || !thePlayer || !pauseMenu)
     {
-        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", "Load a saved game, then open Settings > Mods to start a practice match.", false, UDB_Ok);
+        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: Trained Opponents", "Load a saved game, then open Settings > Mods to start a practice match.", false, UDB_Ok);
         return true;
     }
     if (thePlayer.IsInCombat() || theGame.IsDialogOrCutscenePlaying())
     {
-        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", "Finish combat or dialogue before starting a practice match.", false, UDB_Ok);
+        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: Trained Opponents", "Finish combat or dialogue before starting a practice match.", false, UDB_Ok);
         return true;
     }
     manager = theGame.GetGwintManager();
     if (manager.gameRequested || manager.testMatch || manager.gwaiDevActive)
     {
-        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", "A Gwent match is already opening or active.", false, UDB_Ok);
+        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: Trained Opponents", "A Gwent match is already opening or active.", false, UDB_Ok);
         return true;
     }
     selection = cfg.GetRawConfigValueByStr("W3GwentAI", "GwaiDevOpponent");
@@ -417,7 +417,7 @@ function GwaiDiagnosticsInitialize() : void
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "first_error", "");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "last_error", "");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "vanilla_difficulty", IntToString(FactsQueryLatestValue('gwent_difficulty')));
-    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "build", "0.1.0");
+    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "build", "0.1.1");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "practice", IntToString(theGame.GetGwintManager().gwaiDevAI));
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "policy_tier", IntToString(policyTier));
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "opponent", opponent);

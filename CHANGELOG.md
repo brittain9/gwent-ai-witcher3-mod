@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1 — 2026-11-07
+
+### Changed
+
+- Renamed the mod to Gwent: Trained Opponents across settings, installer
+  messages and package metadata.
+- Rewrote the introduction with the equal-deck stock-AI comparison and
+  explained the difficulty and design goals. The trained policies are unchanged.
+- Added model statistics and identified the supported Remastered edition.
+
 ## 0.1.0 — 2026-11-07
 
 ### Added

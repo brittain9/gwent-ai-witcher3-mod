@@ -21,7 +21,7 @@ except ModuleNotFoundError:
 
 ROOT = Path(__file__).resolve().parents[1]
 FORMAT = "witcher3-player-release-v1"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 SOURCE_FILES = (
     "README.md",
     "CHANGELOG.md",
@@ -31,6 +31,7 @@ SOURCE_FILES = (
     "docs/install.md",
     "docs/building.md",
     "docs/how-it-works.md",
+    "docs/evaluation.md",
     "docs/tool-downloads.md",
     "Install.cmd",
     "Uninstall.cmd",
@@ -174,7 +175,7 @@ def create_release(
     manifest = {
         "format": FORMAT,
         "version": version,
-        "product": "Gwent: A Worthy Opponent",
+        "product": "Gwent: Trained Opponents",
         "source_tree_sha256": _hash(
             json.dumps(source_inventory, sort_keys=True, separators=(",", ":")).encode()
         ),
