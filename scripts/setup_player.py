@@ -663,6 +663,7 @@ def install(root: Path, game_dir: Path, package: Path) -> None:
 
 
 def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
+    sys.dont_write_bytecode = True
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument(

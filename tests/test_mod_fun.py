@@ -188,7 +188,7 @@ class FeatureSettingsTests(unittest.TestCase):
     ) -> None:
         config_ui = SETTINGS[SETTINGS.index("@wrapMethod(CR4GwintGameMenu)") :]
         guard = config_ui.index(
-            'if (practice || GwaiSettingsToggleOn("GwaiStory") || GwaiLabToggleOn("GwaiStats"))'
+            'if (practice || GwaiSettingsToggleOn("GwaiStory") || GwaiLabToggleOn("GwaiStats") || GwaiSettingsToggleOn("GwaiTrace"))'
         )
         self.assertLess(
             guard, config_ui.index("deck = gwintManager.GetCurrentAIDeck();")
