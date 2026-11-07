@@ -48,6 +48,7 @@ SOURCE_FILES = (
     "scripts/mod_fun.py",
     "scripts/mod_practice.py",
     "scripts/mod_trace.py",
+    "scripts/harvest_playtrace.py",
     "scripts/policy_bundle.py",
     "scripts/policy_format.py",
     "scripts/policy_probes.py",
