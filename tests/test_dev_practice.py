@@ -36,7 +36,7 @@ class DevPracticeTests(unittest.TestCase):
                 "GwaiDevRestore",
                 "GwaiPracticeAI",
                 "GwaiSettingsEnabled",
-                "GwaiPracticeTier",
+                "GwaiGwentDifficulty",
                 "GwaiPracticeOpponent",
                 "GwaiPracticeOpponentLabel",
             )
@@ -56,7 +56,7 @@ function fixture(overrides = {}) {
     const events = [], dialogs = [], values = { GwaiDevOpponent: '0', GwaiDevTier: '2', GwaiEnabled: 'true' };
     const m = { gameRequested: false, testMatch: false, gwaiDevActive: false,
         gwaiDevOldExtra: [], selectedEnemyDeck: 'Thaler', tutorial: false,
-        deckTutorial: false, doubleAI: true, faction: 3, extra: ['bonus'], gwaiDevAI: 0, gwaiDevTier: 0, gwaiDevLabel: '',
+        deckTutorial: false, doubleAI: true, faction: 3, extra: ['bonus'], gwaiDevAI: 0, gwaiDevLabel: '',
         GetCurrentAIDeck() { return { deckName: 'Thaler' }; },
         GetHasDoneTutorial() { return this.tutorial; },
         SetHasDoneTutorial(v) { this.tutorial = v; },
@@ -75,14 +75,14 @@ function fixture(overrides = {}) {
         get() { return this.savedExtra; },
         set(v) { this.savedExtra = v.slice(); this.savedExtra.Clear = function() { this.length = 0; }; }
     });
-    const cfg = { GetGroupName(groupId) { return groupId===1?'W3GwentAI':'Gameplay'; },
-        GetRawConfigValueByStr(g, k) { assert.ok(!['GwaiDevAI','GwaiDevStart','GwaiDevReport'].includes(k),'removed preferences must never be read');return values[k] || ''; },
+    const cfg = { GetGroupName() { throw new Error('synthetic UI must not resolve native group'); },
+        GetRawConfigValueByStr(g, k) { assert.ok(!['GwaiDevTier','GwaiDevAI','GwaiDevStart','GwaiDevReport'].includes(k),'removed preferences must never be read');return values[k] || ''; },
         SetRawConfigValueByStr(g, k, v) { assert.ok(!['GwaiDevStart','GwaiDevReport'].includes(k),'buttons do not write preferences');values[k] = v; } };
-    const env = { groupId: 1, optionName: 'GwaiDevStart', UDB_Ok:'OK',
+    const env = { nativeDifficulty:2, GwaiMenuGroupId:()=>31415, groupId: 31415, optionName: 'GwaiDevStart', UDB_Ok:'OK',
         StringToInt: (s, d) => { const n = Number.parseInt(s, 10); return Number.isNaN(n) ? d : n; }, gwintManager: m,
         GwaiDiagnosticsArchive() {},
         OnW3GwentPlayTraceEnd(reason) { assert.equal(reason, 'interrupted'); },
-        NameToString: String, FactsQueryLatestValue: () => 2,
+        NameToString: String, FactsQueryLatestValue: key => { assert.equal(key,'gwent_difficulty');return env.nativeDifficulty; },
         isMainMenu: false, GwintFaction_Neutral: 0,
         wrappedMethod() { events.push('wrapped'); return false; },
         GetRootMenu() { return { CloseMenu() { events.push('close'); } }; },
@@ -102,7 +102,7 @@ function fixture(overrides = {}) {
     m.GwaiDevRestore = () => run('GwaiDevRestore', managerEnv);
     env.GwaiPracticeAI = () => run('GwaiPracticeAI', env);
     env.GwaiSettingsEnabled = () => run('GwaiSettingsEnabled', env);
-    env.GwaiPracticeTier = () => run('GwaiPracticeTier', env);
+    env.GwaiGwentDifficulty = () => run('GwaiGwentDifficulty', env);
     env.GwaiPracticeOpponent = id => run('GwaiPracticeOpponent', { ...env, id });
     env.GwaiPracticeOpponentLabel = id => run('GwaiPracticeOpponentLabel', { ...env, id });
     return { env, m, cfg, values, events, dialogs };
@@ -114,7 +114,7 @@ for (const [selection, deck] of [['0','NKHard'],['1','NilfHard'],['2','ScoiaHard
     assert.equal(Object.hasOwn(f.values,'GwaiDevStart'),false);
     assert.equal(f.m.gameRequested, true);
     assert.equal(f.m.testMatch, true);
-    assert.deepEqual(f.events, ['wrapped', 'close', 'DeckBuilder']);
+    assert.deepEqual(f.events, ['close', 'DeckBuilder']);
     f.env.wrappedMethod = () => { f.env.thePlayer.state = 99; f.m.tutorial = true; f.m.deckTutorial = true; };
     run('matchClose', f.env);
     assert.equal(f.env.thePlayer.state, 7);
@@ -136,7 +136,7 @@ for (const block of ['main','player','root','combat','dialog','pending','testMat
     if (block === 'otherGroup') f.env.groupId = 2;
     if (block === 'other') f.env.optionName = 'GwaiEnabled';
     run('OnButtonClicked', f.env);
-    assert.deepEqual(f.events, ['wrapped'], block);
+    assert.deepEqual(f.events, block === 'otherGroup' ? ['wrapped'] : [], block);
     assert.equal(f.m.selectedEnemyDeck, 'Thaler', block);
     assert.equal(f.dialogs.length,['other','otherGroup'].includes(block)?0:1,block);
     if(['main','player','root'].includes(block)) assert.ok(f.dialogs[0][2].includes('Load a saved game'),block);
@@ -153,15 +153,14 @@ for (const starting of [false, true]) {
 const f = fixture(); run('matchClose', f.env);
 assert.equal(f.env.thePlayer.state, 7); // Closing a normal match does no restoration.
 for (const handled of [false, true]) {
-    const f = fixture(); f.env.optionName = 'GwaiEnabled';
+    const f = fixture(); f.env.groupId=2; f.env.optionName = 'GwaiEnabled';
     f.env.wrappedMethod = () => handled;
     assert.equal(run('OnButtonClicked', f.env), handled);
 }
-for(const enabled of [false,true]) for(const [tierIndex,tier] of [[0,1],[1,2],[2,3]]) {
-    const f = fixture();f.values.GwaiEnabled=String(enabled);f.values.GwaiDevTier=String(tierIndex);
+for(const enabled of [false,true]) for(const tier of [1,2,3]) {
+    const f = fixture();f.values.GwaiEnabled=String(enabled);f.env.nativeDifficulty=tier;
     run('OnButtonClicked', f.env);
     assert.equal(f.m.gwaiDevAI,enabled?2:1);
-    assert.equal(f.m.gwaiDevTier,tier);
     const packet = {}, storage = {
         CreateTempFlashObject() {
             return Object.fromEntries(['Bool','Int','String'].map(type =>
@@ -180,29 +179,29 @@ for(const enabled of [false,true]) for(const [tierIndex,tier] of [[0,1],[1,2],[2
     assert.equal(Object.hasOwn(packet,'difficulty'),false);
     assert.equal(Object.hasOwn(packet,'clockEnabled'),false);
     assert.equal(Object.hasOwn(packet,'clockScale'),false);
-    assert.equal(packet.practiceDeckDifficulty, 2); // Actual NPC deck still follows the unchanged game setting.
+    assert.equal(packet.practiceDeckDifficulty, tier); // Actual NPC deck still follows the unchanged game setting.
     assert.equal(packet.story, false);
     assert.equal(f.values.GwaiEnabled,String(enabled)); // Practice does not overwrite the global preference.
     f.m.GwaiDevRestore();
     run('configure', f.env);
     assert.equal(packet.enabled,enabled);
     assert.equal(packet.practice, false);
-    assert.equal(packet.vanillaDifficulty, 2);
+    assert.equal(packet.vanillaDifficulty, tier);
     assert.equal(packet.story, true);
 }
 {
     const f = fixture();
-    for (const [enabled,tierIndex,opponent,mode,tier,deck] of [
-        ['true','2','0',2,3,'NKHard'],
-        ['false','0','16',1,1,'Lambert'],
-        ['true','1','1',2,2,'NilfHard']
+    for (const [enabled,opponent,mode,tier,deck] of [
+        ['true','0',2,3,'NKHard'],
+        ['false','16',1,1,'Lambert'],
+        ['true','1',2,2,'NilfHard']
     ]) {
-        Object.assign(f.values,{GwaiEnabled:enabled,GwaiDevTier:tierIndex,GwaiDevOpponent:opponent});
+        Object.assign(f.values,{GwaiEnabled:enabled,GwaiDevOpponent:opponent});f.env.nativeDifficulty=tier;
         assert.equal(run('OnButtonClicked',f.env),true);
-        assert.equal(f.m.gwaiDevAI,mode);assert.equal(f.m.gwaiDevTier,tier);
+        assert.equal(f.m.gwaiDevAI,mode);
         assert.equal(f.m.selectedEnemyDeck,deck);
         f.m.GwaiDevRestore();
-        assert.equal(f.m.gwaiDevAI,0);assert.equal(f.m.gwaiDevTier,0);
+        assert.equal(f.m.gwaiDevAI,0);
         assert.equal(f.m.selectedEnemyDeck,'Thaler');assert.equal(f.values.GwaiEnabled,enabled);
     }
 }
@@ -216,7 +215,7 @@ for(const enabled of [false,true]) for(const [tierIndex,tier] of [[0,1],[1,2],[2
     assert.deepEqual(dialogs[0], [0, 'Gwent: Trained Opponents', 'Current configuration<br>Latest recorded match', false, 'OK']);
     assert.equal(Object.hasOwn(f.values,'GwaiDevReport'),false);
     assert.equal(f.m.gameRequested, false);
-    assert.deepEqual(f.events, ['wrapped']);
+    assert.deepEqual(f.events, []);
 }
 """.replace("BODIES", json.dumps(bodies))
         result = subprocess.run(

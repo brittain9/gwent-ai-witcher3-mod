@@ -6,14 +6,6 @@ function GwaiSettingsInitialize() : void
     var signal : string = cfg.GetRawConfigValueByStr("W3GwentAI", "GwaiSignal");
     var normalizedEnabled : string = "true";
     var normalizedSignal : string = "false";
-    var menuGroupIndex : int = cfg.GetGroupIdx("W3GwentAI");
-    // Keep native matrix-loading evidence in the local --report output.
-    cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiMenuGroupIndex", IntToString(menuGroupIndex));
-    if (menuGroupIndex >= 0)
-    {
-        cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiMenuPath", cfg.GetGroupDisplayName('W3GwentAI'));
-        cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiMenuVarCount", IntToString(cfg.GetVarsNumByGroupName('W3GwentAI')));
-    }
     if (settingsVersion == "" || settingsVersion == "1")
     {
         cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiEnabled", "true");
@@ -51,10 +43,7 @@ function GwaiSettingsInitialize() : void
     {
         cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiDevOpponent", "0");
     }
-    if (cfg.GetRawConfigValueByStr("W3GwentAI", "GwaiDevTier") != "0" && cfg.GetRawConfigValueByStr("W3GwentAI", "GwaiDevTier") != "1" && cfg.GetRawConfigValueByStr("W3GwentAI", "GwaiDevTier") != "2")
-    {
-        cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiDevTier", "2");
-    }
+
 }
 
 function GwaiPracticeAI() : int
@@ -66,14 +55,12 @@ function GwaiPracticeAI() : int
     return 2;
 }
 
-function GwaiPracticeTier() : int
+function GwaiGwentDifficulty() : int
 {
-    var raw : string = theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("W3GwentAI", "GwaiDevTier");
-    if (raw == "0" || raw == "1" || raw == "2")
-    {
-        return StringToInt(raw, 2) + 1;
-    }
-    return 3;
+    var difficulty : int = FactsQueryLatestValue('gwent_difficulty');
+    if (difficulty < 1) { return 1; }
+    if (difficulty > 3) { return 3; }
+    return difficulty;
 }
 
 // Fun features are opt-in: a missing or unknown value is off.
@@ -153,38 +140,86 @@ function OnConfigUI()
     wrappedMethod();
 }
 
-function GwaiNameOptions(entries : CScriptedFlashArray, groupID : int) : void
+// @gwai-menu-controls@
+
+function GwaiMenuGroupId() : int
 {
-    var index : int;
-    var childIndex : int;
-    var optionGroup : CScriptedFlashObject;
-    var children : CScriptedFlashArray;
-    var child : CScriptedFlashObject;
-    if (!entries || groupID < 0)
+    return NameToFlashUInt('W3GwentAISettings');
+}
+
+function GwaiMenuControl(storage : CScriptedFlashValueStorage, optionName : name, label : string, kind : InGameMenuActionType, indent : bool) : CScriptedFlashObject
+{
+    var option : CScriptedFlashObject = storage.CreateTempFlashObject();
+    var value : string = "";
+    if (kind == IGMActionType_Toggle || kind == IGMActionType_List)
     {
-        return;
-    }
-    for (index = 0; index < entries.GetLength(); index += 1)
-    {
-        optionGroup = entries.GetElementFlashObject(index);
-        if (optionGroup)
+        value = theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("W3GwentAI", NameToString(optionName));
+        if (!GwaiMenuAcceptsValue(optionName, value))
         {
-            children = optionGroup.GetMemberFlashArray("subElements");
-            if (children && optionGroup.GetMemberFlashString("id") == "mainmenu_gwent")
-            {
-                for (childIndex = 0; childIndex < children.GetLength(); childIndex += 1)
-                {
-                    child = children.GetElementFlashObject(childIndex);
-                    if (child && child.GetMemberFlashInt("groupID") == groupID)
-                    {
-                        optionGroup.SetMemberFlashString("label", "Gwent: Trained Opponents");
-                        optionGroup.SetMemberFlashString("listTitle", "Gwent: Trained Opponents");
-                    }
-                }
-            }
-            GwaiNameOptions(children, groupID);
+            if (kind == IGMActionType_Toggle) { value = "false"; }
+            else { value = "0"; }
         }
     }
+    option.SetMemberFlashString("id", NameToString(optionName));
+    option.SetMemberFlashString("label", label);
+    option.SetMemberFlashUInt("type", kind);
+    option.SetMemberFlashUInt("tag", NameToFlashUInt(optionName));
+    option.SetMemberFlashInt("groupID", GwaiMenuGroupId());
+    option.SetMemberFlashString("current", value);
+    option.SetMemberFlashString("startingValue", value);
+    option.SetMemberFlashBool("indent", indent);
+    option.SetMemberFlashBool("disabled", false);
+    option.SetMemberFlashBool("checkHardwareCursor", false);
+    option.SetMemberFlashBool("streamable", false);
+    option.SetMemberFlashBool("isDropdownContent", false);
+    option.SetMemberFlashBool("isDeveloper", false);
+    option.SetMemberFlashArray("subElements", storage.CreateTempFlashArray());
+    return option;
+}
+
+function GwaiMenuAppend(storage : CScriptedFlashValueStorage, entries : CScriptedFlashArray) : void
+{
+    var mods : CScriptedFlashObject;
+    var page : CScriptedFlashObject;
+    var pages : CScriptedFlashArray;
+    var controls : CScriptedFlashArray;
+    var index : int;
+    var cfg : CInGameConfigWrapper = theGame.GetInGameConfigWrapper();
+    for (index = 0; index < entries.GetLength(); index += 1)
+    {
+        page = entries.GetElementFlashObject(index);
+        if (page && page.GetMemberFlashString("id") == "mainmenu_mods")
+        {
+            mods = page;
+            break;
+        }
+    }
+    if (!mods)
+    {
+        mods = storage.CreateTempFlashObject();
+        mods.SetMemberFlashString("id", "mainmenu_mods");
+        mods.SetMemberFlashString("label", GetLocStringByKeyExt("panel_mainmenu_mods"));
+        mods.SetMemberFlashString("listTitle", GetLocStringByKeyExt("panel_mainmenu_mods"));
+        mods.SetMemberFlashUInt("tag", NameToFlashUInt('MenuSelector'));
+        mods.SetMemberFlashUInt("type", IGMActionType_MenuHolder);
+        pages = storage.CreateTempFlashArray();
+        mods.SetMemberFlashArray("subElements", pages);
+        entries.PushBackFlashObject(mods);
+    }
+    pages = mods.GetMemberFlashArray("subElements");
+    page = storage.CreateTempFlashObject();
+    page.SetMemberFlashString("id", "gwai_trained_opponents");
+    page.SetMemberFlashString("label", "Gwent: Trained Opponents");
+    page.SetMemberFlashString("listTitle", "Gwent: Trained Opponents");
+    page.SetMemberFlashUInt("tag", NameToFlashUInt('MenuSelector'));
+    page.SetMemberFlashUInt("type", IGMActionType_MenuLastHolder);
+    controls = GwaiMenuControls(storage);
+    page.SetMemberFlashArray("subElements", controls);
+    pages.PushBackFlashObject(page);
+    cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiMenuTransport", "script");
+    cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiMenuGroupIndex", IntToString(GwaiMenuGroupId()));
+    cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiMenuPath", "mainmenu_mods.gwai_trained_opponents");
+    cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiMenuVarCount", IntToString(controls.GetLength()));
 }
 
 @wrapMethod(CR4IngameMenu)
@@ -192,9 +227,37 @@ function showOptionsPanel() : void
 {
     var entries : CScriptedFlashArray;
     wrappedMethod();
+    GwaiSettingsInitialize();
     entries = IngameMenu_FillOptionsSubMenuData(m_flashValueStorage, isMainMenu);
-    GwaiNameOptions(entries, theGame.GetInGameConfigWrapper().GetGroupIdx("W3GwentAI"));
+    GwaiMenuAppend(m_flashValueStorage, entries);
     m_flashValueStorage.SetFlashArray("ingamemenu.options.entries", entries);
+}
+
+@wrapMethod(CR4IngameMenu)
+function OnOptionValueChanged(groupId : int, optionName : name, optionValue : string)
+{
+    if (groupId != GwaiMenuGroupId())
+    {
+        return wrappedMethod(groupId, optionName, optionValue);
+    }
+    if (GwaiMenuAcceptsValue(optionName, optionValue))
+    {
+        theGame.GetInGameConfigWrapper().SetRawConfigValueByStr("W3GwentAI", NameToString(optionName), optionValue);
+        hasChangedOption = true;
+        OnPlaySoundEvent("gui_global_switch");
+        theGame.SaveUserSettings();
+    }
+    return true;
+}
+
+@wrapMethod(CR4IngameMenu)
+function OnCancelOptionValueChange(groupId : int, optionName : name)
+{
+    if (groupId == GwaiMenuGroupId())
+    {
+        return true;
+    }
+    return wrappedMethod(groupId, optionName);
 }
 
 // Use the game's test-match route, without entering an NPC's quest or wager.
@@ -207,13 +270,11 @@ function OnButtonClicked(groupId : int, optionName : name)
     var pauseMenu : CR4CommonIngameMenu;
     var opponent : name;
     var selection : string;
-    var handled : bool;
-    handled = wrappedMethod(groupId, optionName);
-    cfg = theGame.GetInGameConfigWrapper();
-    if (cfg.GetGroupName(groupId) != 'W3GwentAI')
+    if (groupId != GwaiMenuGroupId())
     {
-        return handled;
+        return wrappedMethod(groupId, optionName);
     }
+    cfg = theGame.GetInGameConfigWrapper();
     if (optionName == 'GwaiDevReport')
     {
         theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: Trained Opponents", GwaiVerificationText(), false, UDB_Ok);
@@ -221,7 +282,7 @@ function OnButtonClicked(groupId : int, optionName : name)
     }
     if (optionName != 'GwaiDevStart')
     {
-        return handled;
+        return false;
     }
     pauseMenu = (CR4CommonIngameMenu)GetRootMenu();
     if (isMainMenu || !thePlayer || !pauseMenu)
@@ -259,7 +320,6 @@ function OnButtonClicked(groupId : int, optionName : name)
 @addField(CR4GwintManager) var gwaiDevOldEnemy : name;
 @addField(CR4GwintManager) var gwaiDevOldExtra : array<name>;
 @addField(CR4GwintManager) var gwaiDevAI : int;
-@addField(CR4GwintManager) var gwaiDevTier : int;
 @addField(CR4GwintManager) var gwaiDevLabel : string;
 
 @addMethod(CR4GwintManager)
@@ -275,7 +335,6 @@ function GwaiDevBegin(opponent : name)
     gwaiDevOldExtra = GetAdditionalCards();
     gwaiDevActive = true;
     gwaiDevAI = GwaiPracticeAI();
-    gwaiDevTier = GwaiPracticeTier();
     gwaiDevLabel = GwaiPracticeOpponentLabel(StringToInt(theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("W3GwentAI", "GwaiDevOpponent"), 0) + 1);
     SetHasDoneTutorial(true);
     SetHasDoneDeckTutorial(true);
@@ -305,7 +364,6 @@ function GwaiDevRestore()
     testMatch = false;
     gameRequested = false;
     gwaiDevAI = 0;
-    gwaiDevTier = 0;
     gwaiDevLabel = "";
     gwaiDevOldExtra.Clear();
 }
@@ -346,11 +404,10 @@ function OnConfigUI()
     wrappedMethod();
     practice = gwintManager.gwaiDevActive;
     enabled = GwaiSettingsEnabled();
-    policyDifficulty = FactsQueryLatestValue('gwent_difficulty');
+    policyDifficulty = GwaiGwentDifficulty();
     if (practice)
     {
         enabled = enabled && gwintManager.gwaiDevAI == 2;
-        policyDifficulty = gwintManager.gwaiDevTier;
     }
     deckName = "";
     if (practice || GwaiSettingsToggleOn("GwaiStory") || GwaiLabToggleOn("GwaiStats") || GwaiSettingsToggleOn("GwaiTrace"))
@@ -388,19 +445,15 @@ function GwaiDiagnosticsInitialize() : void
     var cfg : CInGameConfigWrapper = theGame.GetInGameConfigWrapper();
     var practice : bool = theGame.GetGwintManager().gwaiDevActive;
     var enabled : bool = GwaiSettingsEnabled();
-    var policyTier : int = FactsQueryLatestValue('gwent_difficulty');
+    var policyTier : int = GwaiGwentDifficulty();
     var matchMode : string = "story";
     var opponent : string = "";
     var deck : SDeckDefinition;
-    if (policyTier < 1) { policyTier = 1; }
-    if (policyTier > 3) { policyTier = 3; }
     if (practice)
     {
         matchMode = "practice";
         opponent = theGame.GetGwintManager().gwaiDevLabel;
         enabled = enabled && theGame.GetGwintManager().gwaiDevAI == 2;
-        policyTier = theGame.GetGwintManager().gwaiDevTier;
-        if (policyTier < 1 || policyTier > 3) { policyTier = 3; }
     }
     else
     {
@@ -442,11 +495,10 @@ function GwaiCurrentConfigurationText(separator : string) : string
     {
         text += separator + "AI: Stock game AI";
     }
-    text += separator + "Practice difficulty: " + GwaiDifficultyLabel(GwaiPracticeTier());
-    text += separator + "Story difficulty: the game's Gwent setting";
+    text += separator + "Gwent difficulty: " + GwaiDifficultyLabel(GwaiGwentDifficulty()) + " (game setting)";
     if (GwaiSettingsToggleOn("GwaiStory"))
     {
-        text += " (stronger story opponents enabled)";
+        text += separator + "Stronger story opponents enabled";
     }
     return text;
 }

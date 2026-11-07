@@ -34,14 +34,14 @@ class AIDiagnosticTests(unittest.TestCase):
         harness = r"""
 const assert=require('node:assert/strict');const body=BODY;
 for(const enabled of [false,true]) for(const mode of [1,2]) for(const tier of [-1,0,1,2,3,4,99]) {
- const saved={};const manager={gwaiDevActive:true,gwaiDevTier:tier,gwaiDevAI:mode,gwaiDevLabel:'test opponent',
+ const saved={};const manager={gwaiDevActive:true,gwaiDevAI:mode,gwaiDevLabel:'test opponent',
  GetCurrentAIDeck(){throw new Error('practice diagnostics already have their requested opponent')}};
  Object.defineProperty(manager,'selectedEnemyDeck',{get(){throw new Error('native field is private')}});
  const env={theGame:{GetInGameConfigWrapper(){return {SetRawConfigValueByStr(g,k,v){saved[k]=v}}},
- GetGwintManager(){return manager},SaveUserSettings(){}},IntToString:String,FactsQueryLatestValue(){return 2},GwaiSettingsEnabled(){return enabled},NameToString:String};
+ GetGwintManager(){return manager},SaveUserSettings(){}},IntToString:String,FactsQueryLatestValue(){return tier},GwaiGwentDifficulty(){return Math.max(1,Math.min(3,tier))},GwaiSettingsEnabled(){return enabled},NameToString:String};
  new Function('env','with(env){'+body+'}')(env);
- assert.equal(saved.policy_tier,String(tier>=1&&tier<=3?tier:3));
- assert.equal(saved.build,'0.1.1');assert.equal(saved.vanilla_difficulty,'2');
+ assert.equal(saved.policy_tier,String(Math.max(1,Math.min(3,tier))));
+ assert.equal(saved.build,'0.1.1');assert.equal(saved.vanilla_difficulty,String(tier));
  assert.equal(saved.enabled,String(enabled&&mode===2));assert.equal(saved.match_mode,'practice');
 }
 """.replace("BODY", json.dumps(body))
@@ -56,11 +56,11 @@ for(const enabled of [false,true]) for(const mode of [1,2]) for(const tier of [-
         harness = r"""
 const assert=require('node:assert/strict');const body=BODY;
 for(const enabled of [false,true]) for(const [native,expected] of [[0,1],[1,1],[2,2],[3,3],[4,3]]) {
- let deckReads=0;const saved={};const manager={gwaiDevActive:false,gwaiDevTier:0,gwaiDevAI:0,gwaiDevLabel:'',
+ let deckReads=0;const saved={};const manager={gwaiDevActive:false,gwaiDevAI:0,gwaiDevLabel:'',
  GetCurrentAIDeck(){deckReads++;return {deckName:'Lambert'}}};
  Object.defineProperty(manager,'selectedEnemyDeck',{get(){throw new Error('native field is private')}});
  const env={theGame:{GetInGameConfigWrapper(){return {SetRawConfigValueByStr(g,k,v){saved[k]=v}}},
- GetGwintManager(){return manager},SaveUserSettings(){}},IntToString:String,FactsQueryLatestValue(){return native},GwaiSettingsEnabled(){return enabled},NameToString:String};
+ GetGwintManager(){return manager},SaveUserSettings(){}},IntToString:String,FactsQueryLatestValue(){return native},GwaiGwentDifficulty(){return Math.max(1,Math.min(3,native))},GwaiSettingsEnabled(){return enabled},NameToString:String};
  new Function('env','with(env){'+body+'}')(env);
  assert.equal(saved.policy_tier,String(expected));assert.equal(saved.enabled,String(enabled));
  assert.equal(saved.match_mode,'story');assert.equal(saved.opponent,'Lambert');
@@ -190,7 +190,7 @@ assert.equal(saved.stock, '3'); // Optional UI cannot interrupt the stock decisi
 Object.assign(saved, { build:'0.1.1',practice: '2', enabled:'true', policy_tier: '3', opponent: 'Scoia tournament' });
 const reportEnv = { ...sinkEnv };
 reportEnv.GwaiDifficultyLabel = tier=>new Function('tier',bodies.difficulty)(tier);
-reportEnv.GwaiSettingsEnabled=()=>true;reportEnv.GwaiPracticeTier=()=>3;reportEnv.GwaiSettingsToggleOn=()=>false;
+reportEnv.GwaiSettingsEnabled=()=>true;reportEnv.GwaiGwentDifficulty=()=>3;reportEnv.GwaiSettingsToggleOn=()=>false;
 reportEnv.GwaiReportValue=(value,richText)=>new Function('env','value','richText','with(env){'+bodies.value+'}')(reportEnv,value,richText);
 reportEnv.GwaiCurrentConfigurationText=separator=>new Function('env','separator','with(env){'+bodies.configuration+'}')(reportEnv,separator);
 reportEnv.GwaiLatestMatchText=(separator,richText)=>new Function('env','separator','richText','with(env){'+bodies.latest+'}')(reportEnv,separator,richText);
@@ -238,7 +238,7 @@ assert.ok(verification().includes('Fallback AI used; no network choice recorded'
                 "GwaiReportValue",
                 "GwaiDifficultyLabel",
                 "GwaiSettingsEnabled",
-                "GwaiPracticeTier",
+                "GwaiGwentDifficulty",
                 "GwaiSettingsToggleOn",
                 "GwaiDiagnosticsArchive",
             )
@@ -248,19 +248,19 @@ const assert=require('node:assert/strict');const bodies=BODIES;
 const sections={W3GwentAI:{GwaiEnabled:'true',GwaiDevTier:'1',GwaiStory:'false'},W3GwentAIDiagnostics:{}};
 const cfg={GetRawConfigValueByStr(group,key){return sections[group]?.[key]??''},
 SetRawConfigValueByStr(group,key,value){sections[group][key]=value}};
-const env={theGame:{GetInGameConfigWrapper(){return cfg}},IntToString:String,
+const env={FactsQueryLatestValue:()=>2,theGame:{GetInGameConfigWrapper(){return cfg}},IntToString:String,
 StringToInt(s,fallback){const n=Number.parseInt(s,10);return Number.isNaN(n)?fallback:n},
 StrLeft:(s,n)=>s.slice(0,n),StrReplaceAll:(s,a,b)=>s.split(a).join(b)};
 function run(name,args={}){return new Function('env','with(env){'+bodies[name]+'}')({...env,...args})}
 env.GwaiDifficultyLabel=tier=>run('GwaiDifficultyLabel',{tier});
-env.GwaiSettingsEnabled=()=>run('GwaiSettingsEnabled');env.GwaiPracticeTier=()=>run('GwaiPracticeTier');
+env.GwaiSettingsEnabled=()=>run('GwaiSettingsEnabled');env.GwaiGwentDifficulty=()=>run('GwaiGwentDifficulty');
 env.GwaiSettingsToggleOn=id=>run('GwaiSettingsToggleOn',{id});
 env.GwaiReportValue=(value,richText)=>run('GwaiReportValue',{value,richText});
 env.GwaiCurrentConfigurationText=separator=>run('GwaiCurrentConfigurationText',{separator});
 env.GwaiLatestMatchText=(separator,richText)=>run('GwaiLatestMatchText',{separator,richText});
 let report=run('GwaiVerificationText');
 assert.ok(report.includes('Current configuration<br>AI: Trained network'));
-assert.ok(report.includes('Practice difficulty: Medium'));
+assert.ok(report.includes('Gwent difficulty: Medium (game setting)'));
 assert.ok(report.includes('Latest recorded match<br>No match recorded yet.'));
 assert.ok(!report.includes('Stock game AI'));assert.ok(!report.includes('Opponent:'));
 assert.ok(!report.includes('\\n'));

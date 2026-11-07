@@ -2192,7 +2192,7 @@ def _difficulty_ladder(tier_policies: dict[str, dict[str, Any]]) -> dict[str, An
     tiers = {
         tier: {
             "game_difficulty": {"label": labels[tier], "fact_value": fact_value},
-            "selected_by": "the game's Gwent difficulty setting or explicit practice tier",
+            "selected_by": "the game's Gwent difficulty setting",
             "checkpoint_sha256": tier_policies[tier]["checkpoint_sha256"],
             "temperature": tier_policies[tier]["temperature"],
         }

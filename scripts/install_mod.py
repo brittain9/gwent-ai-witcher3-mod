@@ -31,11 +31,12 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 try:
-    from scripts import cli_encoding, extract_game, redbundle
+    from scripts import cli_encoding, extract_game, redbundle, settings_menu
 except ImportError:  # run as scripts/install_mod.py
     import cli_encoding
     import extract_game
     import redbundle
+    import settings_menu
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +75,7 @@ class Variant:
     package_dir: Path
     scripts: tuple[str, ...]
     menu: str
+    script_menu: bool = False
 
 
 VARIANTS = {
@@ -86,6 +88,7 @@ VARIANTS = {
             "mod/trace/settings/scripts/local/gwai_playtrace.ws",
         ),
         "mod/ai/settings/menu/modW3GwentAI.xml",
+        script_menu=True,
     ),
     "probe": Variant(
         "modW3GwentAIProbe",
@@ -97,6 +100,7 @@ VARIANTS = {
             "mod/trace/settings/scripts/local/gwai_playtrace.ws",
         ),
         "mod/probe-timing/settings/menu/modW3GwentAIProbe.xml",
+        script_menu=True,
     ),
     "recorder": Variant(
         "modW3GwentRecorder",
@@ -255,12 +259,22 @@ def assemble_package(
     for source in (*spec.scripts, spec.menu):
         name = Path(source).name
         actual = _sha256(ROOT / source)
-        if (name in recorded or name.endswith(".ws")) and recorded.get(name) != actual:
+        if (
+            spec.script_menu or name in recorded or name.endswith(".ws")
+        ) and recorded.get(name) != actual:
             raise ModInstallError(
                 f"the build used {name} {str(recorded.get(name))[:16]}, but this checkout has {actual[:16]}; "
                 f"rebuild the {variant} edition so the package's scripts match its Gwent screen"
             )
 
+    assembled_settings = None
+    if spec.script_menu:
+        assembled_settings = settings_menu.assemble_settings(
+            (ROOT / "mod/ai/settings/scripts/local/gwai_settings.ws").read_text(
+                encoding="utf-8"
+            ),
+            (ROOT / spec.menu).read_text(encoding="utf-8"),
+        )
     bundle, store = redbundle.pack([(SWF_MEMBER, redswf)])
     if package_dir.exists():
         shutil.rmtree(package_dir)
@@ -270,10 +284,15 @@ def assemble_package(
     (content / "metadata.store").write_bytes(store)
     _verify_bundle(content, redswf)
     for script in spec.scripts:
-        shutil.copy2(ROOT / script, content / "scripts/local" / Path(script).name)
-    menu_target = package_dir / MENU_DIR / Path(spec.menu).name
-    menu_target.parent.mkdir(parents=True)
-    shutil.copy2(ROOT / spec.menu, menu_target)
+        target = content / "scripts/local" / Path(script).name
+        if spec.script_menu and Path(script).name == "gwai_settings.ws":
+            target.write_text(assembled_settings, encoding="utf-8")
+        else:
+            shutil.copy2(ROOT / script, target)
+    if not spec.script_menu:
+        menu_target = package_dir / MENU_DIR / Path(spec.menu).name
+        menu_target.parent.mkdir(parents=True)
+        shutil.copy2(ROOT / spec.menu, menu_target)
     shutil.copy2(manifest_path, package_dir / "build-manifest.json")
     shutil.copy2(pins_path, package_dir / "game-pins.json")
     files = {
@@ -619,12 +638,15 @@ def preflight(
             "files in Steam). With a different file the scripts can fail to compile at launch."
         )
 
+    needs_menu_xml = any(
+        spec.mod_name == mod_name and not spec.script_menu for spec in VARIANTS.values()
+    )
     menu_dir = game_dir / MENU_DIR
-    if not menu_dir.is_dir():
+    if needs_menu_xml and not menu_dir.is_dir():
         check.problems.append(
             f"{MENU_DIR} is missing; the Options > Mods menu would never appear"
         )
-    else:
+    elif needs_menu_xml:
         present = [name for name in FILELIST_NAMES if (menu_dir / name).is_file()]
         if present:
             check.notes.append(
@@ -816,10 +838,13 @@ def install_package(
         if target.exists() and not target.is_file():
             raise ModInstallError(f"install target is not a regular file: {relative}")
     menu_line = PurePosixPath(VARIANTS[manifest["variant"]].menu).name + ";"
+    installs_menu_xml = any(
+        relative == MENU_DIR / menu_line.rstrip(";") for relative, _, _ in package_files
+    )
     filelist_edits = []
     for name in FILELIST_NAMES:
         target = game_dir / MENU_DIR / name
-        if target.is_file():
+        if installs_menu_xml and target.is_file():
             original = target.read_bytes()
             if menu_line.encode("utf-8") not in original.splitlines():
                 filelist_edits.append((MENU_DIR / name, original))

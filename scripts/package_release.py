@@ -46,6 +46,7 @@ SOURCE_FILES = (
     "scripts/build_mod.py",
     "scripts/build_probe.py",
     "scripts/install_mod.py",
+    "scripts/settings_menu.py",
     "scripts/redbundle.py",
     "scripts/mod_fun.py",
     "scripts/mod_practice.py",

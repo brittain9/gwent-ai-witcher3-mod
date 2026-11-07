@@ -125,19 +125,6 @@
                     </Option>
                 </OptionsArray>
             </Var>
-            <Var id="GwaiDevTier" displayName="Practice AI difficulty" displayType="OPTIONS" tags="nonLocalizedName;customNames;nonLocalized">
-                <OptionsArray>
-                    <Option id="0" displayName="Easy">
-                        <Entry varId="GwaiDevTier" value="0" />
-                    </Option>
-                    <Option id="1" displayName="Medium">
-                        <Entry varId="GwaiDevTier" value="1" />
-                    </Option>
-                    <Option id="2" displayName="Hard">
-                        <Entry varId="GwaiDevTier" value="2" />
-                    </Option>
-                </OptionsArray>
-            </Var>
             <Var id="GwaiDevStart" displayName="Start practice match (loaded game only)" displayType="BUTTON" tags="nonLocalizedName" />
             <Var id="GwaiAssistanceHeader" displayName="Optional assistance" displayType="SEPARATOR" tags="nonLocalizedName" />
             <Var id="GwaiCoach" displayName="Coach hint on your turn" displayType="TOGGLE" tags="nonLocalizedName" />

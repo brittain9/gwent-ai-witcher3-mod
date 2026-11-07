@@ -360,9 +360,7 @@ class InstallTests(Fixture):
             all(name.startswith("Mods/modW3GwentAI/") for name in manifest["files"])
         )
         before = snapshot(game / "bin")
-        receipt = install_package(
-            game, package_dir=package, runtime_dir=self.runtime
-        )
+        receipt = install_package(game, package_dir=package, runtime_dir=self.runtime)
         self.assertEqual(snapshot(game / "bin"), before)
         self.assertEqual(json.loads(receipt.read_text())["filelist_edits"], [])
         uninstall_package(game, runtime_dir=self.runtime)
@@ -455,7 +453,6 @@ class InstallTests(Fixture):
                 "Mods/modW3GwentAI/content/metadata.store",
                 "Mods/modW3GwentAI/content/scripts/local/gwai_settings.ws",
                 "Mods/modW3GwentAI/content/scripts/local/gwai_playtrace.ws",
-                "bin/config/r4game/user_config_matrix/pc/modW3GwentAI.xml",
             },
         )
         for entry in receipt["files"]:
@@ -464,26 +461,15 @@ class InstallTests(Fixture):
             self.assertEqual(
                 entry["installed_sha256"], manifest["files"][entry["path"]]["sha256"]
             )
-        menu_entry = next(
-            entry
-            for entry in receipt["files"]
-            if entry["path"].endswith("modW3GwentAI.xml")
-        )
-        self.assertEqual(menu_entry["original_sha256"], sha(b"older menu\x00"))
-        self.assertEqual(
-            [edit["path"] for edit in receipt["filelist_edits"]],
-            [
-                f"{install_mod.MENU_DIR}/dx11filelist.txt",
-                f"{install_mod.MENU_DIR}/dx12filelist.txt",
-            ],
-        )
+        self.assertEqual(menu.read_bytes(), b"older menu\x00")
+        self.assertEqual(receipt["filelist_edits"], [])
         self.assertEqual(
             (game / install_mod.MENU_DIR / "dx11filelist.txt").read_bytes(),
-            b"gameplay.xml;\r\nmodW3GwentAI.xml;\r\n",
+            b"gameplay.xml;\r\n",
         )
         self.assertEqual(
             (game / install_mod.MENU_DIR / "dx12filelist.txt").read_bytes(),
-            b"gameplay.xml;\nmodW3GwentAI.xml;\n",
+            b"gameplay.xml;",
         )
         self.assertEqual(receipt["game_version"], "5.0.1048522 (P4CL 13413172)")
         self.assertEqual(len(receipt["game_files_checked"]), 6)
@@ -524,9 +510,37 @@ class InstallTests(Fixture):
                     },
                     scripts,
                 )
-                self.assertTrue((game / install_mod.MENU_DIR / menu).is_file())
+                self.assertEqual(
+                    (game / install_mod.MENU_DIR / menu).is_file(),
+                    variant == "recorder",
+                )
                 uninstall_package(game, runtime_dir=self.runtime)
                 self.assertEqual(snapshot(game), before)
+
+    def test_legacy_player_package_receipt_still_restores_xml_and_filelists(self):
+        game, pins_path = make_game(self.root, filelists=True)
+        package = self.package(pins_path)
+        menu_name = install_mod.MENU_DIR / "modW3GwentAI.xml"
+        target = package / menu_name
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"<UserConfig/>")
+        manifest_path = package / "package-manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["files"][str(menu_name)] = {
+            "sha256": sha(target.read_bytes()),
+            "size": target.stat().st_size,
+        }
+        manifest_path.write_text(json.dumps(manifest))
+        before = snapshot(game)
+        receipt_path = install_package(
+            game, package_dir=package, runtime_dir=self.runtime
+        )
+        receipt = json.loads(receipt_path.read_text())
+        self.assertEqual(len(receipt["files"]), 5)
+        self.assertEqual(len(receipt["filelist_edits"]), 2)
+        self.assertTrue((game / menu_name).is_file())
+        uninstall_package(game, runtime_dir=self.runtime)
+        self.assertEqual(snapshot(game), before)
 
     def test_uninstall_refuses_a_changed_installed_file_or_a_different_game(
         self,
@@ -591,6 +605,20 @@ class InstallTests(Fixture):
                 package_dir=self.root / "package",
                 pins_path=pins_path,
             )
+
+    def test_generated_menu_requires_the_builds_authored_xml_identity(self):
+        _, pins_path = make_game(self.root)
+        build = make_build(self.root, pins_path)
+        manifest_path = build / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        del manifest["inputs_sha256"]["modW3GwentAI.xml"]
+        manifest_path.write_text(json.dumps(manifest))
+        package = self.root / "package"
+        with self.assertRaisesRegex(ModInstallError, "build used modW3GwentAI.xml"):
+            assemble_package(
+                "ai", build_dir=build, package_dir=package, pins_path=pins_path
+            )
+        self.assertFalse(package.exists())
 
     def test_build_package_runs_the_edition_build_then_assembles_it(self) -> None:
         _, pins_path = make_game(self.root)
