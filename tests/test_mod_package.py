@@ -102,6 +102,22 @@ def patched_mini_sources() -> dict[str, str]:
 
 
 class ModSourcePatchTests(unittest.TestCase):
+    def test_method_extraction_distinguishes_a_name_from_a_longer_prefix_match(self):
+        source = """
+function GwaiMenuControls(storage : Object) : int
+{
+    return 6;
+}
+function GwaiMenuControl(storage : Object) : int
+{
+    return 17;
+}
+"""
+        self.assertEqual(_method_body(source, "GwaiMenuControl").strip(), "return 17;")
+        self.assertEqual(_method_body(source, "GwaiMenuControls").strip(), "return 6;")
+        with self.assertRaisesRegex(ModBuildError, "missing method GwaiMenu"):
+            _method_body(source, "GwaiMenu")
+
     def test_hooks_are_added_at_class_scope_and_settings_are_bridged(self) -> None:
         patched = patched_mini_sources()
         self.assertIn("if(this.gwaiBegin()) return;", patched["AIPlayerController"])

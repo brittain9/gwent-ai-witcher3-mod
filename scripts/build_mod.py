@@ -478,9 +478,10 @@ def _once(
 
 def _method_body(source: str, name: str) -> str:
     compact = source.replace("\r\n", "\n")
-    start = compact.find("function " + name)
-    if start < 0:
+    declaration = re.search(r"\bfunction\s+" + re.escape(name) + r"\s*\(", compact)
+    if declaration is None:
         raise ModBuildError(f"source is missing method {name}")
+    start = declaration.start()
     open_brace = compact.find("{", start)
     if open_brace < 0:
         raise ModBuildError(f"source method {name} has no body")

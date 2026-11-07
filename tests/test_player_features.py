@@ -58,7 +58,7 @@ const assert=require('node:assert/strict'), baseline=BASELINE, current=CURRENT;
 function exercise(bodies) {
  const rows=[];
  for(const practice of [false,true])for(const enabled of [false,true])for(const signal of [false,true])
- for(const tier of [1,2,3])for(let seed=1;seed<=12;seed++) {
+ for(const tier of [1,2,3])for(const seed of [1,1000,4000,2,1001,4001,3,1002,4002,4,1003,4003]) {
   let rng=seed,draws=0,captures=0,runs=0,fallbacks=0;const decisions=[],messages=[];
   const random=()=>{rng=(Math.imul(rng,1664525)+1013904223)>>>0;draws++;return rng/4294967296};
   const moves=[{kind:'pass'},{kind:'play',instanceId:17,row:0,targetPlayer:1,scoreGain:8},{kind:'leader',instanceId:99}];
@@ -94,6 +94,12 @@ assert.deepEqual(after,before);
 assert.deepEqual(new Set(after.flatMap(r=>r.decisions.map(d=>d.kind))),new Set(['stock','network']));
 assert.ok(after.some(r=>r.attitude===1));assert.ok(after.some(r=>r.transaction?.sourceCardInstanceRef?.instanceId===17));
 assert.ok(after.some(r=>r.transaction?.sourceCardInstanceRef?.instanceId===99));
+for(const practice of [false,true])for(const signal of [false,true])for(const tier of [1,2,3]) {
+ const arm=after.filter(r=>r.enabled&&r.practice===practice&&r.signal===signal&&r.tier===tier);
+ assert.equal(arm.filter(r=>r.attitude===1).length,4,'four pass decisions in each enabled arm');
+ assert.equal(arm.filter(r=>r.transaction?.sourceCardInstanceRef?.instanceId===17).length,4,'four card decisions in each enabled arm');
+ assert.equal(arm.filter(r=>r.transaction?.sourceCardInstanceRef?.instanceId===99).length,4,'four leader decisions in each enabled arm');
+}
 """.replace("BASELINE", json.dumps(baseline)).replace("CURRENT", json.dumps(current))
         result = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
