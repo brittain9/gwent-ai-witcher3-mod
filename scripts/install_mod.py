@@ -19,6 +19,7 @@ import csv
 import hashlib
 import io
 import json
+import locale
 import platform
 import re
 import shutil
@@ -30,8 +31,9 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 try:
-    from scripts import extract_game, redbundle
+    from scripts import cli_encoding, extract_game, redbundle
 except ImportError:  # run as scripts/install_mod.py
+    import cli_encoding
     import extract_game
     import redbundle
 
@@ -119,7 +121,12 @@ def running_game_processes() -> list[str]:
     )
     try:
         result = subprocess.run(
-            command, capture_output=True, text=True, timeout=15, check=False
+            command,
+            capture_output=True,
+            text=True,
+            encoding=locale.getencoding(),
+            timeout=15,
+            check=False,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise ModInstallError(
@@ -325,7 +332,7 @@ def build_package(
 ) -> Path:
     if variant not in VARIANTS:
         raise ModInstallError(f"unknown mod variant: {variant}")
-    command = [sys.executable, str(ROOT / "scripts/build_mod.py")]
+    command = cli_encoding.python_command(ROOT / "scripts/build_mod.py")
     if variant == "recorder":
         command.append("--recorder")
     else:
@@ -336,7 +343,7 @@ def build_package(
             command.extend(["--tier-checkpoint", assignment])
         command.extend(["--easy-temperature", str(easy_temperature)])
     result = subprocess.run(
-        command, cwd=ROOT, capture_output=True, text=True, check=False
+        command, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", check=False
     )
     if result.returncode != 0:
         raise ModInstallError(
@@ -1050,6 +1057,7 @@ def first_match_report(
 
 
 def main(argv: list[str] | None = None) -> int:
+    cli_encoding.configure_console()
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )

@@ -18,6 +18,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts import cli_encoding
 from scripts.mod_trace import SCHEMA, SETTINGS_SECTION
 
 DEFAULT_OUTPUT = ROOT / ".runtime/playtraces"
@@ -568,6 +569,7 @@ def harvest(
 
 
 def main() -> int:
+    cli_encoding.configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("settings_file", type=Path)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)

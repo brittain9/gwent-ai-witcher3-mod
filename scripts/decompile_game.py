@@ -12,6 +12,12 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+try:
+    from scripts import cli_encoding
+except ModuleNotFoundError:  # direct script invocation
+    import cli_encoding
+
+
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "red.game.witcher3.menus.gwint"
 REQUIRED = {
@@ -52,6 +58,7 @@ def decompile(
         exported = temporary / "export"
         command = [
             *(java or ["java"]),
+            *cli_encoding.JAVA_UTF8_OPTIONS,
             "-Xmx1g",
             "-Djava.awt.headless=true",
             "-jar",
@@ -66,15 +73,14 @@ def decompile(
         completed = subprocess.run(
             command,
             capture_output=True,
-            text=True,
             cwd=temporary,
             timeout=120,
             check=False,
         )
+        stdout = cli_encoding.decode_output(completed.stdout)
+        stderr = cli_encoding.decode_output(completed.stderr)
         if completed.returncode:
-            raise ValueError(
-                f"JPEXS failed: {(completed.stdout + completed.stderr)[-3000:]}"
-            )
+            raise ValueError(f"JPEXS failed: {(stdout + stderr)[-3000:]}")
         package_dir = exported / "scripts" / Path(PACKAGE.replace(".", "/"))
         classes = {path.stem for path in package_dir.glob("*.as")}
         if missing := REQUIRED - classes:
@@ -108,13 +114,12 @@ def decompile(
             raise ValueError("temporary manifest must not be a symlink")
         staging.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         staging.replace(manifest_path)
-        (output / "decompile.log").write_text(
-            completed.stdout + completed.stderr, encoding="utf-8"
-        )
+        (output / "decompile.log").write_text(stdout + stderr, encoding="utf-8")
     return manifest
 
 
 def main() -> int:
+    cli_encoding.configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--swf",

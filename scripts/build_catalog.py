@@ -9,6 +9,12 @@ import os
 import sys
 from pathlib import Path
 
+try:
+    from scripts import cli_encoding
+except ModuleNotFoundError:  # direct script invocation
+    import cli_encoding
+
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from w3gwent.catalog import (  # noqa: E402
     DEFAULT_CARD_TEMPLATE,
@@ -23,6 +29,7 @@ DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / ".runtime/catalog.json"
 
 
 def main(argv: list[str] | None = None) -> int:
+    cli_encoding.configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--game-dir",

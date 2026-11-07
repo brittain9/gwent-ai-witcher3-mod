@@ -12,6 +12,11 @@ import zlib
 from pathlib import Path
 from typing import Any
 
+try:
+    from scripts import cli_encoding
+except ModuleNotFoundError:  # direct script invocation
+    import cli_encoding
+
 ROOT = Path(__file__).resolve().parents[1]
 VANILLA = ROOT / ".local/vanilla/gameplay/gui_new/swf/gwint"
 VANILLA_MANIFEST = ROOT / ".local/vanilla/manifest.json"
@@ -345,6 +350,7 @@ def verify_source_pins() -> tuple[bytes, bytes, bytes, bytes, str]:
 def _run_ffdec(jar: Path, log: list[str], *arguments: object, cwd: Path) -> None:
     command = [
         "java",
+        *cli_encoding.JAVA_UTF8_OPTIONS,
         "-Xmx1g",
         "-Djava.awt.headless=true",
         "-jar",
@@ -353,11 +359,13 @@ def _run_ffdec(jar: Path, log: list[str], *arguments: object, cwd: Path) -> None
     ]
     try:
         result = subprocess.run(
-            command, cwd=cwd, capture_output=True, text=True, timeout=180, check=False
+            command, cwd=cwd, capture_output=True, timeout=180, check=False
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ProbeBuildError(f"FFDec command could not complete: {exc}") from exc
-    output = result.stdout + result.stderr
+    output = cli_encoding.decode_output(result.stdout) + cli_encoding.decode_output(
+        result.stderr
+    )
     log.append("$ " + " ".join(command) + "\n" + output)
     if result.returncode != 0:
         raise ProbeBuildError(
@@ -689,6 +697,7 @@ def build() -> dict[str, Any]:
 
 
 def main() -> int:
+    cli_encoding.configure_console()
     report = build()
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0 if report.get("status") == "offline_compiled_and_export_verified" else 1

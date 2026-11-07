@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import struct
+import subprocess
 import unittest
 import zlib
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.build_probe import (
     AI_DECISION_ANCHOR,
@@ -14,6 +16,7 @@ from scripts.build_probe import (
     ProbeBuildError,
     _inject_sources,
     _read_chunk_table,
+    _run_ffdec,
     _verify_compiled_sources,
     normalize_swf,
     patch_redswf,
@@ -22,6 +25,19 @@ from scripts.build_probe import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class ToolOutputEncodingTests(unittest.TestCase):
+    def test_ffdec_requires_each_captured_stream_to_be_utf8(self):
+        # Concatenating these streams first would silently create a valid é.
+        with (
+            patch(
+                "scripts.build_probe.subprocess.run",
+                return_value=subprocess.CompletedProcess([], 0, b"\xc3", b"\xa9"),
+            ),
+            self.assertRaisesRegex(ValueError, "not UTF-8; original bytes"),
+        ):
+            _run_ffdec(Path("ffdec.jar"), [], cwd=ROOT)
 
 
 def make_swf(body: bytes, version: int = 10) -> bytes:

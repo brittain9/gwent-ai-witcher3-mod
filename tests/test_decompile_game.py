@@ -1,5 +1,6 @@
 import hashlib
 import json
+import locale
 import struct
 import sys
 import tempfile
@@ -28,19 +29,43 @@ for name in ("CardTemplate", "CardManager", "CardInstance", "CardEffectManager",
     (root / (name + ".as")).write_text("class " + name + " {}")
 if "corrupt" in sys.argv[0]:
     path = Path(sys.argv[-1]); path.write_bytes(path.read_bytes() + b"changed")
+sys.stdout.buffer.write('FFDec path: été 日本語'.encode('utf-8'))
+sys.stderr.buffer.write('FFDec diagnostics: été 日本語'.encode('utf-8'))
+if 'bad_encoding' in sys.argv[0]: sys.stdout.buffer.write(bytes([0xe9]))
 """
 
 
 class DecompileArtifactTests(unittest.TestCase):
+    def test_invalid_tool_encoding_retains_bytes_and_cannot_attest_an_export(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, jar, fake = (
+                root / "game.swf",
+                root / "tool.jar",
+                root / "bad_encoding.py",
+            )
+            source.write_bytes(b"FWS\x0c" + struct.pack("<I", 10) + b"\0\0")
+            jar.write_bytes(b"synthetic tool")
+            fake.write_text(FAKE_JAVA, encoding="utf-8")
+            output = root / "as3"
+            with self.assertRaisesRegex(
+                ValueError, r"not UTF-8; original bytes:.*\\xe9"
+            ):
+                decompile(source, jar, output, java=[sys.executable, str(fake)])
+            self.assertFalse((output / "manifest.json").exists())
+
     def test_export_manifest_binds_source_and_every_exported_class(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source, jar, fake = root / "game.swf", root / "tool.jar", root / "java.py"
             source.write_bytes(b"FWS\x0c" + struct.pack("<I", 10) + b"\0\0")
             jar.write_bytes(b"synthetic tool")
-            fake.write_text(FAKE_JAVA)
+            fake.write_text(FAKE_JAVA, encoding="utf-8")
             output = root / "as3"
-            with patch.object(decompile_game, "Path", WindowsManifestReferences):
+            with (
+                patch.object(decompile_game, "Path", WindowsManifestReferences),
+                patch.object(locale, "getencoding", return_value="cp1252"),
+            ):
                 manifest = decompile(
                     source, jar, output, java=[sys.executable, str(fake)]
                 )
@@ -57,6 +82,9 @@ class DecompileArtifactTests(unittest.TestCase):
                     hashlib.sha256((output / relative).read_bytes()).hexdigest(),
                     expected,
                 )
+            log = (output / "decompile.log").read_text(encoding="utf-8")
+            self.assertIn("FFDec path: été 日本語", log)
+            self.assertIn("FFDec diagnostics: été 日本語", log)
 
     def test_changed_input_cannot_receive_a_success_manifest(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -68,7 +96,7 @@ class DecompileArtifactTests(unittest.TestCase):
             )
             source.write_bytes(b"FWS\x0c" + struct.pack("<I", 10) + b"\0\0")
             jar.write_bytes(b"synthetic tool")
-            fake.write_text(FAKE_JAVA)
+            fake.write_text(FAKE_JAVA, encoding="utf-8")
             output = root / "as3"
             with self.assertRaisesRegex(ValueError, "changed during export"):
                 decompile(source, jar, output, java=[sys.executable, str(fake)])

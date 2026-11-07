@@ -16,9 +16,17 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from scripts import build_probe, compiled_policy, mod_fun, mod_practice, mod_trace
+    from scripts import (
+        build_probe,
+        cli_encoding,
+        compiled_policy,
+        mod_fun,
+        mod_practice,
+        mod_trace,
+    )
 except ModuleNotFoundError:
     import build_probe
+    import cli_encoding
     import compiled_policy
     import mod_fun
     import mod_practice
@@ -659,6 +667,7 @@ def verify_compiled_initialization(compiled: Path, log: list[str]) -> int:
     checker = ROOT / "scripts/CheckAs3Initialization.java"
     command = [
         "java",
+        *cli_encoding.JAVA_UTF8_OPTIONS,
         "-Djava.awt.headless=true",
         "-cp",
         str(build_probe.FFDEC_JAR.parent / "lib/*"),
@@ -666,16 +675,15 @@ def verify_compiled_initialization(compiled: Path, log: list[str]) -> int:
         str(compiled),
     ]
     try:
-        result = subprocess.run(
-            command, capture_output=True, text=True, timeout=60, check=False
-        )
+        result = subprocess.run(command, capture_output=True, timeout=60, check=False)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise ModBuildError(
             f"compiled class initialization check could not run: {error}"
         ) from error
-    output = result.stdout + result.stderr
+    stdout = cli_encoding.decode_output(result.stdout)
+    output = stdout + cli_encoding.decode_output(result.stderr)
     log.append("$ " + " ".join(command) + "\n" + output)
-    matched = re.search(r"PASS: (\d+) helper class initializers", result.stdout)
+    matched = re.search(r"PASS: (\d+) helper class initializers", stdout)
     if result.returncode or matched is None:
         raise ModBuildError(
             "compiled class initialization check failed: " + output[-4000:]
@@ -2369,6 +2377,7 @@ def _prepare_policy_exports(
             command,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=False,
         )
         if replay_result.returncode != 0:
@@ -3037,6 +3046,7 @@ def build(
                 [node, str(ROOT / "mod/ai/node/mod.test.js")],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 check=False,
                 env=env,
             )
@@ -3074,6 +3084,7 @@ def build(
 
 
 def main() -> int:
+    cli_encoding.configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--recorder",

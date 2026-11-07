@@ -13,6 +13,12 @@ import zlib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+try:
+    from scripts import cli_encoding
+except ModuleNotFoundError:  # direct script invocation
+    import cli_encoding
+
+
 MAGIC = b"POTATO70"
 PREAMBLE_SIZE = 32
 ENTRY_SIZE = 304
@@ -314,6 +320,7 @@ def extract(game_dir: Path, output_dir: Path) -> dict[str, object]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    cli_encoding.configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--game-dir",

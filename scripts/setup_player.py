@@ -23,6 +23,13 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
+sys.dont_write_bytecode = True
+
+try:
+    from scripts import cli_encoding
+except ModuleNotFoundError:  # direct script invocation
+    import cli_encoding
+
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_FORMAT = "witcher3-player-release-v1"
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
@@ -31,6 +38,7 @@ MAX_ARCHIVE_FILES = 30_000
 FFDEC_VERSION = "26.4.0"
 NODE_VERSION = "24.11.1"
 JAVA_VERSION = "21.0.13+9"
+JAVA_SOURCE_MARKER = "WORTHY_OPPONENT_JAVA_SOURCE_OK été 日本語"
 
 
 class SetupError(RuntimeError):
@@ -407,7 +415,7 @@ def ensure_tool(
 
 
 def _source_compiler_available(java: Path) -> bool:
-    marker = "WORTHY_OPPONENT_JAVA_SOURCE_OK"
+    marker = JAVA_SOURCE_MARKER
     try:
         with tempfile.TemporaryDirectory(prefix="worthy-opponent-java-") as value:
             source = Path(value) / "WorthyOpponentJavaCheck.java"
@@ -415,20 +423,27 @@ def _source_compiler_available(java: Path) -> bool:
                 "class WorthyOpponentJavaCheck {"
                 " public static void main(String[] args) {"
                 f' System.out.print("{marker}");'
+                f' System.err.print("{marker}");'
                 " } }\n",
                 encoding="utf-8",
             )
             result = subprocess.run(
-                [str(java), "-Djava.awt.headless=true", str(source)],
+                [
+                    str(java),
+                    *cli_encoding.JAVA_UTF8_OPTIONS,
+                    "-Djava.awt.headless=true",
+                    str(source),
+                ],
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
                 timeout=15,
                 check=False,
             )
-            return result.returncode == 0 and result.stdout == marker
+            return (
+                result.returncode == 0
+                and result.stdout == marker.encode("utf-8")
+                and result.stderr == marker.encode("utf-8")
+            )
     except (OSError, subprocess.SubprocessError):
         return False
 
@@ -440,15 +455,18 @@ def _system_tool(name: str, minimum: int) -> Path | None:
     option = "-version" if name == "java" else "--version"
     try:
         result = subprocess.run(
-            [executable, option],
+            [
+                executable,
+                *(cli_encoding.JAVA_UTF8_OPTIONS if name == "java" else ()),
+                option,
+            ],
             text=True,
             encoding="utf-8",
-            errors="replace",
             capture_output=True,
             timeout=15,
             check=False,
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         return None
     text = result.stdout + result.stderr
     match = re.search(r'(?:version\s+"|^v|javac\s+)(\d+)', text)
@@ -619,26 +637,37 @@ def run_step(command: list[str], *, label: str, cwd: Path, env: dict[str, str]) 
     runtime = cwd / ".runtime"
     runtime.mkdir(parents=True, exist_ok=True)
     log = runtime / "setup-player.log"
-    with log.open("a", encoding="utf-8") as handle:
-        handle.write(label + "\n")
+    invalid_output = False
+    with log.open("ab") as handle:
+        handle.write((label + "\n").encode("utf-8"))
         try:
             with subprocess.Popen(
                 command,
                 cwd=cwd,
                 env=env,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             ) as process:
-                for line in process.stdout:
-                    print(line, end="", flush=True)
-                    handle.write(line)
+                for raw_line in process.stdout:
+                    handle.write(raw_line)
                     handle.flush()
+                    try:
+                        line = (
+                            raw_line.decode("utf-8")
+                            .replace("\r\n", "\n")
+                            .replace("\r", "\n")
+                        )
+                    except UnicodeDecodeError:
+                        invalid_output = True
+                        continue
+                    print(line, end="", flush=True)
                 returncode = process.wait()
         except OSError as exc:
             raise SetupError(f"{label}: {exc}") from exc
+    if invalid_output:
+        raise SetupError(
+            f"{label}: child output was not UTF-8; original bytes remain in .runtime/setup-player.log; child exit {returncode}"
+        )
     if returncode:
         raise SetupError(
             f"{label} failed (exit {returncode}); details remain in .runtime/setup-player.log"
@@ -652,26 +681,29 @@ def prepare(root: Path, game_dir: Path, env: dict[str, str]) -> Path:
     commands = [
         (
             "[1/5] Reading the installed Gwent resources",
-            [sys.executable, script("extract_game.py"), "--game-dir", str(game_dir)],
+            cli_encoding.python_command(
+                script("extract_game.py"), "--game-dir", str(game_dir)
+            ),
         ),
         (
             "[2/5] Preparing local game classes",
-            [sys.executable, script("decompile_game.py")],
+            cli_encoding.python_command(script("decompile_game.py")),
         ),
         (
             "[3/5] Building the local compatibility catalog",
-            [sys.executable, script("build_catalog.py"), "--game-dir", str(game_dir)],
+            cli_encoding.python_command(
+                script("build_catalog.py"), "--game-dir", str(game_dir)
+            ),
         ),
         (
             "[4/5] Compiling and verifying the opponent",
-            [
-                sys.executable,
+            cli_encoding.python_command(
                 script("build_mod.py"),
                 "--policy-bundle",
                 str(root / "policies"),
                 "--output-dir",
                 str(root / ".runtime/player-build"),
-            ],
+            ),
         ),
     ]
     for label, command in commands:
@@ -709,7 +741,7 @@ def install(root: Path, game_dir: Path, package: Path) -> None:
 
 
 def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
-    sys.dont_write_bytecode = True
+    cli_encoding.configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument(

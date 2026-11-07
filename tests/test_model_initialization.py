@@ -27,7 +27,9 @@ class CompiledInitializationGateTests(unittest.TestCase):
                 self.subTest(code=code, output=output),
                 patch(
                     "scripts.build_mod.subprocess.run",
-                    return_value=subprocess.CompletedProcess([], code, output, ""),
+                    return_value=subprocess.CompletedProcess(
+                        [], code, output.encode("utf-8"), b""
+                    ),
                 ),
                 self.assertRaisesRegex(ModBuildError, "initialization check failed"),
             ):

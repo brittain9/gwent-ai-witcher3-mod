@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import os
 import shutil
 import stat
 import subprocess
@@ -21,6 +22,57 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ToolArchiveTests(unittest.TestCase):
+    def test_prepare_preserves_unicode_across_cp1252_parent_and_child_pipes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "Joueur été"
+            scripts = root / "scripts"
+            scripts.mkdir(parents=True)
+            (scripts / "extract_game.py").write_text(
+                "import sys\n"
+                "sys.stdout.reconfigure(newline='\\r\\n')\n"
+                "if not sys.flags.utf8_mode: sys.stdout.reconfigure(encoding='cp1252')\n"
+                "print('Installed resources: été')\n",
+                encoding="utf-8",
+            )
+            (scripts / "decompile_game.py").write_text(
+                "import sys\nprint('Compiler path: été / 日本語')\nsys.exit(7)\n",
+                encoding="utf-8",
+            )
+            stdout_bytes, stderr_bytes = io.BytesIO(), io.BytesIO()
+            stdout = io.TextIOWrapper(stdout_bytes, encoding="cp1252")
+            stderr = io.TextIOWrapper(stderr_bytes, encoding="cp1252")
+            with (
+                patch.object(setup_player, "verify_distribution"),
+                patch.object(setup_player, "check_game"),
+                patch.object(
+                    setup_player, "ensure_tools", return_value=dict(os.environ)
+                ),
+                patch("sys.stdout", stdout),
+                patch("sys.stderr", stderr),
+            ):
+                result = setup_player.main(
+                    ["--prepare-only", "--game-dir", str(root / "game")], root=root
+                )
+            stdout.flush()
+            stderr.flush()
+            self.assertEqual(result, 1)
+            self.assertIn(
+                "Installed resources: été", stdout_bytes.getvalue().decode("utf-8")
+            )
+            self.assertNotIn(b"\r", stdout_bytes.getvalue())
+            self.assertIn(
+                "Compiler path: été / 日本語", stdout_bytes.getvalue().decode("utf-8")
+            )
+            self.assertIn("exit 7", stderr_bytes.getvalue().decode("utf-8"))
+            log = (root / ".runtime/setup-player.log").read_text(encoding="utf-8")
+            self.assertIn("Installed resources: été", log)
+            self.assertIn("日本語", log)
+            self.assertNotIn("\ufffd", log)
+            self.assertIn(
+                b"\xc3\xa9t\xc3\xa9\r\n",
+                (root / ".runtime/setup-player.log").read_bytes(),
+            )
+
     def cached_archive(self, root):
         source = root / "original.zip"
         with zipfile.ZipFile(source, "w") as output:
@@ -191,6 +243,36 @@ class ToolArchiveTests(unittest.TestCase):
 
 
 class JavaCapabilityTests(unittest.TestCase):
+    def test_non_utf8_version_output_rejects_system_runtime(self):
+        with (
+            patch.object(
+                setup_player.shutil, "which", return_value="/runtime/bin/java"
+            ),
+            patch.object(
+                setup_player.subprocess,
+                "run",
+                side_effect=UnicodeDecodeError(
+                    "utf-8", b"vendor \xe9", 7, 8, "invalid byte"
+                ),
+            ),
+            patch.object(setup_player, "_source_compiler_available") as source_probe,
+        ):
+            self.assertIsNone(setup_player._system_tool("java", 11))
+        source_probe.assert_not_called()
+
+    def test_source_probe_requires_unicode_utf8_on_both_streams(self):
+        marker = setup_player.JAVA_SOURCE_MARKER.encode("utf-8")
+        for stdout, stderr in ((b"legacy \xe9", marker), (marker, b"legacy \xe9")):
+            with (
+                self.subTest(stdout=stdout, stderr=stderr),
+                patch.object(
+                    setup_player.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 0, stdout, stderr),
+                ),
+            ):
+                self.assertFalse(setup_player._source_compiler_available(Path("java")))
+
     def test_source_compiler_without_a_javac_file_is_usable(self):
         with tempfile.TemporaryDirectory() as temporary:
             executable = Path(temporary) / "runtime/bin/java"
@@ -205,7 +287,10 @@ class JavaCapabilityTests(unittest.TestCase):
                 self.assertTrue(source.is_file())
                 source_paths.append(source)
                 return subprocess.CompletedProcess(
-                    command, 0, "WORTHY_OPPONENT_JAVA_SOURCE_OK", ""
+                    command,
+                    0,
+                    setup_player.JAVA_SOURCE_MARKER.encode("utf-8"),
+                    setup_player.JAVA_SOURCE_MARKER.encode("utf-8"),
                 )
 
             with (
@@ -264,6 +349,25 @@ class JavaCapabilityTests(unittest.TestCase):
 
 
 class SetupFlowTests(unittest.TestCase):
+    def test_fresh_direct_help_does_not_write_import_caches(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            for name in ("setup_player.py", "cli_encoding.py"):
+                shutil.copyfile(ROOT / "scripts" / name, scripts / name)
+            before = {path.relative_to(root) for path in root.rglob("*")}
+            result = subprocess.run(
+                [sys.executable, "-E", str(scripts / "setup_player.py"), "--help"],
+                cwd=root,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                {path.relative_to(root) for path in root.rglob("*")}, before
+            )
+
     def managed_receipt(self, root, game):
         names = [
             "Mods/modW3GwentAI/content/blob0.bundle",
@@ -470,7 +574,7 @@ class SetupFlowTests(unittest.TestCase):
 
             def run(command, **kwargs):
                 calls.append((command, kwargs))
-                if command[1].endswith("decompile_game.py"):
+                if str(command[3]).endswith("decompile_game.py"):
                     raise setup_player.SetupError("decompiler failed")
 
             with patch.object(setup_player, "run_step", side_effect=run):
@@ -480,7 +584,7 @@ class SetupFlowTests(unittest.TestCase):
                     setup_player.prepare(root, root / "game", {"PATH": "tools"})
             self.assertEqual(len(calls), 2)
             for command, kwargs in calls:
-                self.assertTrue(Path(command[1]).is_relative_to(root))
+                self.assertTrue(Path(command[3]).is_relative_to(root))
                 self.assertEqual(kwargs["cwd"], root)
                 self.assertEqual(kwargs["env"], {"PATH": "tools"})
 
@@ -552,6 +656,54 @@ class SetupFlowTests(unittest.TestCase):
             self.assertIn(
                 "compiler detail", (root / ".runtime/setup-player.log").read_text()
             )
+
+    def test_invalid_child_encoding_fails_with_original_bytes_retained(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with (
+                patch("sys.stdout", new_callable=io.StringIO) as output,
+                self.assertRaisesRegex(
+                    setup_player.SetupError, "not UTF-8; original bytes"
+                ) as failure,
+            ):
+                setup_player.run_step(
+                    [
+                        sys.executable,
+                        "-c",
+                        "import sys;sys.stdout.buffer.write(b'legacy \\xe9\\n');sys.exit(7)",
+                    ],
+                    label="Compile",
+                    cwd=root,
+                    env={},
+                )
+            self.assertEqual(
+                (root / ".runtime/setup-player.log").read_bytes(),
+                b"Compile\nlegacy \xe9\n",
+            )
+            self.assertNotIn("\ufffd", output.getvalue())
+            self.assertIn("child exit 7", str(failure.exception))
+
+    def test_direct_extractor_cli_reports_unicode_errors_on_a_cp1252_pipe(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game = root / "Missing été 日本語"
+            environment = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/extract_game.py"),
+                    "--game-dir",
+                    str(game),
+                    "--output",
+                    str(root / "output"),
+                ],
+                env=environment,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("Missing été 日本語", result.stderr.decode("utf-8"))
+            self.assertNotIn(b"UnicodeEncodeError", result.stderr)
 
 
 class ShellLauncherTests(unittest.TestCase):

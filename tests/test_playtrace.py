@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -506,6 +508,38 @@ def settings_text(records: list[dict], status: str) -> str:
 
 
 class TraceHarvestTests(unittest.TestCase):
+    def test_cli_preserves_unicode_timelines_and_errors_on_cp1252_pipes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            settings, output = root / "settings", root / "out"
+            records = fixture()
+            records[1]["error"] = "Unknown card: été 日本語"
+            settings.write_text(settings_text(records, "final"), encoding="utf-8")
+            environment = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+            command = [sys.executable, str(ROOT / "scripts/harvest_playtrace.py")]
+            result = subprocess.run(
+                [*command, str(settings), "--output-dir", str(output)],
+                capture_output=True,
+                env=environment,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Unknown card: été 日本語", result.stdout.decode("utf-8"))
+            timeline_path = next(output.glob("*/*.txt"))
+            self.assertIn(
+                "Unknown card: été 日本語", timeline_path.read_text(encoding="utf-8")
+            )
+            missing = root / "Missing été 日本語"
+            failure = subprocess.run(
+                [*command, str(missing), "--output-dir", str(output)],
+                capture_output=True,
+                env=environment,
+                check=False,
+            )
+            self.assertEqual(failure.returncode, 1)
+            self.assertIn("Missing été 日本語", failure.stderr.decode("utf-8"))
+            self.assertNotIn(b"UnicodeEncodeError", failure.stderr)
+
     def test_native_raw_chunks_roundtrip_quotes_controls_unicode_and_split_keys(
         self,
     ) -> None:

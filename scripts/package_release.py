@@ -37,6 +37,7 @@ SOURCE_FILES = (
     "Install.sh",
     "Uninstall.sh",
     "scripts/setup_player.py",
+    "scripts/cli_encoding.py",
     "scripts/package_release.py",
     "scripts/extract_game.py",
     "scripts/decompile_game.py",
