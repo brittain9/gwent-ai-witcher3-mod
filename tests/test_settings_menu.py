@@ -34,6 +34,43 @@ def assembled_source(variant="ai"):
 
 
 class SettingsCompilerTests(unittest.TestCase):
+    def test_player_build_exposes_only_the_six_play_and_troubleshooting_controls(self):
+        source = assembled_source()
+        controls = javascript_body("GwaiMenuControls", source)
+        self.assertEqual(
+            [
+                name
+                for name in (
+                    "GwaiEnabled",
+                    "GwaiDevOpponent",
+                    "GwaiDevStart",
+                    "GwaiDevReport",
+                    "GwaiSignal",
+                    "GwaiTrace",
+                )
+                if f"'{name}'" in controls
+            ],
+            [
+                "GwaiEnabled",
+                "GwaiDevOpponent",
+                "GwaiDevStart",
+                "GwaiDevReport",
+                "GwaiSignal",
+                "GwaiTrace",
+            ],
+        )
+        self.assertEqual(controls.count("entries.PushBackFlashObject(option);"), 6)
+        for feature in (
+            "Coach",
+            "Story",
+            "Lab",
+            "Meter",
+            "PostGame",
+            "Blunder",
+            "Stats",
+        ):
+            self.assertNotIn("Gwai" + feature, source)
+
     def test_unsupported_menu_semantics_cannot_silently_disappear(self):
         menu = (ROOT / install_mod.VARIANTS["ai"].menu).read_text()
         changes = [
