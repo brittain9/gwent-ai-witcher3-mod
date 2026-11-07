@@ -1,7 +1,9 @@
 import hashlib
 import io
 import json
+import shutil
 import stat
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -12,6 +14,10 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import setup_player
+
+from tests import test_install_mod as install_fixture
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class ToolArchiveTests(unittest.TestCase):
@@ -171,6 +177,79 @@ class SetupFlowTests(unittest.TestCase):
                     setup_player.check_game(root, game)
             preflight.assert_not_called()
 
+    def test_new_download_checks_verified_previous_install_without_changing_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game, pins_path = install_fixture.make_game(root)
+            old, new = root / "old download", root / "new download"
+            receipt, _ = self.managed_receipt(old, game)
+            (new / "mod").mkdir(parents=True)
+            shutil.copy2(pins_path, new / "mod/game-pins.json")
+            before_game = install_fixture.snapshot(game)
+            before_receipt = receipt.read_bytes()
+            setup_player.check_game(new, game, installed_from=old)
+            self.assertEqual(install_fixture.snapshot(game), before_game)
+            self.assertEqual(receipt.read_bytes(), before_receipt)
+            self.assertFalse((new / ".runtime").exists())
+            with self.assertRaisesRegex(setup_player.SetupError, "compatibility"):
+                setup_player.check_game(new, game)
+
+    def test_previous_install_must_have_a_valid_receipt_for_this_game(self):
+        for failure in ("missing", "changed", "other-game"):
+            with (
+                self.subTest(failure=failure),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary)
+                game = root / "game"
+                old = root / "old"
+                receipt_path, receipt = self.managed_receipt(old, game)
+                if failure == "missing":
+                    receipt_path.unlink()
+                elif failure == "changed":
+                    (game / receipt["files"][0]["path"]).write_bytes(b"changed")
+                else:
+                    receipt["game_dir"] = str(root / "another game")
+                    receipt_path.write_text(json.dumps(receipt))
+                with patch.object(setup_player._installer(), "preflight") as preflight:
+                    with self.assertRaises(setup_player.SetupError):
+                        setup_player.check_game(root / "new", game, installed_from=old)
+                preflight.assert_not_called()
+
+    def test_previous_install_option_is_limited_to_read_only_modes(self):
+        for mode in ([], ["--uninstall"], ["--report"]):
+            with self.subTest(mode=mode), patch("sys.stderr", new_callable=io.StringIO):
+                with self.assertRaises(SystemExit) as error:
+                    setup_player.main([*mode, "--installed-from", "old-download"])
+                self.assertEqual(error.exception.code, 2)
+
+    def test_prepare_passes_the_named_old_download_to_compatibility_check(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            game, old = root / "game", root / "old"
+            with (
+                patch.object(setup_player, "verify_distribution"),
+                patch.object(setup_player, "check_game") as check,
+                patch.object(setup_player, "ensure_tools", return_value={}),
+                patch.object(setup_player, "prepare", return_value=root / "package"),
+                patch.object(setup_player, "install") as install,
+            ):
+                self.assertEqual(
+                    setup_player.main(
+                        [
+                            "--prepare-only",
+                            "--installed-from",
+                            str(old),
+                            "--game-dir",
+                            str(game),
+                        ],
+                        root=root,
+                    ),
+                    0,
+                )
+            check.assert_called_once_with(root, game.resolve(), installed_from=old)
+            install.assert_not_called()
+
     def test_check_is_read_only_and_never_downloads_tools(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -187,7 +266,7 @@ class SetupFlowTests(unittest.TestCase):
                     0,
                 )
             verify.assert_called_once_with(root)
-            check.assert_called_once_with(root, game.resolve())
+            check.assert_called_once_with(root, game.resolve(), installed_from=None)
             tools.assert_not_called()
             prepare.assert_not_called()
             self.assertEqual(list(root.iterdir()), [game])
@@ -330,6 +409,32 @@ class SetupFlowTests(unittest.TestCase):
             self.assertIn("compiler detail", output.getvalue())
             self.assertIn(
                 "compiler detail", (root / ".runtime/setup-player.log").read_text()
+            )
+
+
+class ShellLauncherTests(unittest.TestCase):
+    @unittest.skipUnless(
+        shutil.which("sh"), "POSIX shell is required for the shell launcher"
+    )
+    def test_uninstall_does_not_require_executable_bits_after_zip_extraction(self):
+        with tempfile.TemporaryDirectory(prefix="mod download ") as temporary:
+            root = Path(temporary)
+            install = root / "Install.sh"
+            install.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+            install.chmod(0o644)
+            uninstall = root / "Uninstall.sh"
+            uninstall.write_bytes((ROOT / "Uninstall.sh").read_bytes())
+            result = subprocess.run(
+                [shutil.which("sh"), uninstall.as_posix(), "--game-dir", "game folder"],
+                cwd=root,
+                text=True,
+                encoding="utf-8",
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                result.stdout.splitlines(), ["--uninstall", "--game-dir", "game folder"]
             )
 
 

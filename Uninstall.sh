@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 set -eu
-exec "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/Install.sh" --uninstall "$@"
+exec sh "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/Install.sh" --uninstall "$@"

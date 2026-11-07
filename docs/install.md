@@ -107,9 +107,26 @@ automatically.
 
 ## Update and remove
 
-Keep the current extracted folder and its backups. Prepare a new download with
-`--prepare-only` before replacing a working install. An existing managed
-version must be removed explicitly before installation from another folder.
+Keep the current extracted folder and its backups. To prepare an update while
+the current version remains installed, extract the new download into a separate
+folder. From that new folder, name the folder used for the current installation:
+
+```powershell
+py -3 scripts/setup_player.py --prepare-only --installed-from "C:\path\to\current mod folder" --game-dir "C:\path\to\The Witcher 3"
+```
+
+```sh
+python3 scripts/setup_player.py --prepare-only --installed-from "/path/to/current mod folder" --game-dir "/path/to/The Witcher 3"
+```
+
+Setup verifies the old receipt and all installed files before preparing the new
+package. It leaves the current installation and its receipt in the old folder.
+After preparation succeeds, remove the old version using its original folder,
+then run the new folder's install launcher. Removal is always explicit.
+
+`--installed-from` is available only with `--check` or `--prepare-only`.
+Preparing again in the folder that owns the current installation needs only
+`--prepare-only`, without naming another folder.
 
 Close the game and REDlauncher, then run `Uninstall.cmd` or `sh Uninstall.sh`
 from the folder used to install. Alternatively:

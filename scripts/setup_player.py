@@ -557,9 +557,16 @@ def _managed_install(root: Path, game_dir: Path) -> str | None:
         ) from exc
 
 
-def check_game(root: Path, game_dir: Path) -> None:
+def check_game(
+    root: Path, game_dir: Path, *, installed_from: Path | None = None
+) -> None:
     installer = _installer()
-    managed = _managed_install(root, game_dir)
+    receipt_root = (
+        root if installed_from is None else installed_from.expanduser().resolve()
+    )
+    managed = _managed_install(receipt_root, game_dir)
+    if installed_from is not None and managed is None:
+        raise SetupError("The previous download folder has no installation receipt")
     pins = installer.load_pins(root / "mod/game-pins.json")
     check = installer.preflight(game_dir, pins, "modW3GwentAI", installed_mod=managed)
     print(check.text(), flush=True)
@@ -696,7 +703,14 @@ def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
         action="store_true",
         help="use installed or verified cached tools only",
     )
+    parser.add_argument(
+        "--installed-from",
+        type=Path,
+        help="previous download folder; use with --check or --prepare-only",
+    )
     args = parser.parse_args(argv)
+    if args.installed_from is not None and not (args.check or args.prepare_only):
+        parser.error("--installed-from requires --check or --prepare-only")
     try:
         if sys.version_info < (3, 12):
             raise SetupError("Python 3.12 or newer is required")
@@ -724,7 +738,7 @@ def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
             game_dir = Path(value)
         game_dir = game_dir.expanduser().resolve()
         verify_distribution(root)
-        check_game(root, game_dir)
+        check_game(root, game_dir, installed_from=args.installed_from)
         if args.check:
             print("Download and game checks passed. No files were changed.")
             return 0
