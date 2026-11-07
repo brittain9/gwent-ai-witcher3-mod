@@ -160,7 +160,7 @@ function GwaiNameOptions(entries : CScriptedFlashArray, groupID : int) : void
 {
     var index : int;
     var childIndex : int;
-    var entry : CScriptedFlashObject;
+    var optionGroup : CScriptedFlashObject;
     var children : CScriptedFlashArray;
     var child : CScriptedFlashObject;
     if (!entries || groupID < 0)
@@ -169,19 +169,19 @@ function GwaiNameOptions(entries : CScriptedFlashArray, groupID : int) : void
     }
     for (index = 0; index < entries.GetLength(); index += 1)
     {
-        entry = entries.GetElementFlashObject(index);
-        if (entry)
+        optionGroup = entries.GetElementFlashObject(index);
+        if (optionGroup)
         {
-            children = entry.GetMemberFlashArray("subElements");
-            if (children && entry.GetMemberFlashString("id") == "mainmenu_gwent")
+            children = optionGroup.GetMemberFlashArray("subElements");
+            if (children && optionGroup.GetMemberFlashString("id") == "mainmenu_gwent")
             {
                 for (childIndex = 0; childIndex < children.GetLength(); childIndex += 1)
                 {
                     child = children.GetElementFlashObject(childIndex);
                     if (child && child.GetMemberFlashInt("groupID") == groupID)
                     {
-                        entry.SetMemberFlashString("label", "Gwent: A Worthy Opponent");
-                        entry.SetMemberFlashString("listTitle", "Gwent: A Worthy Opponent");
+                        optionGroup.SetMemberFlashString("label", "Gwent: A Worthy Opponent");
+                        optionGroup.SetMemberFlashString("listTitle", "Gwent: A Worthy Opponent");
                     }
                 }
             }
