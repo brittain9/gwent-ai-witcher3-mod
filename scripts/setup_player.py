@@ -392,6 +392,33 @@ def ensure_tool(
     return destination / spec.executable
 
 
+def _source_compiler_available(java: Path) -> bool:
+    marker = "WORTHY_OPPONENT_JAVA_SOURCE_OK"
+    try:
+        with tempfile.TemporaryDirectory(prefix="worthy-opponent-java-") as value:
+            source = Path(value) / "WorthyOpponentJavaCheck.java"
+            source.write_text(
+                "class WorthyOpponentJavaCheck {"
+                " public static void main(String[] args) {"
+                f' System.out.print("{marker}");'
+                " } }\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [str(java), "-Djava.awt.headless=true", str(source)],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=15,
+                check=False,
+            )
+            return result.returncode == 0 and result.stdout == marker
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
 def _system_tool(name: str, minimum: int) -> Path | None:
     executable = shutil.which(name)
     if executable is None:
@@ -401,6 +428,8 @@ def _system_tool(name: str, minimum: int) -> Path | None:
         result = subprocess.run(
             [executable, option],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             capture_output=True,
             timeout=15,
             check=False,
@@ -411,15 +440,10 @@ def _system_tool(name: str, minimum: int) -> Path | None:
     match = re.search(r'(?:version\s+"|^v|javac\s+)(\d+)', text)
     if result.returncode or not match or int(match.group(1)) < minimum:
         return None
-    if name == "java":
-        compiler = (
-            Path(executable)
-            .resolve()
-            .with_name("javac.exe" if os.name == "nt" else "javac")
-        )
-        if not compiler.is_file():
-            return None
-    return Path(executable).resolve()
+    resolved = Path(executable).resolve()
+    if name == "java" and not _source_compiler_available(resolved):
+        return None
+    return resolved
 
 
 def ensure_tools(root: Path, *, offline: bool = False) -> dict[str, str]:

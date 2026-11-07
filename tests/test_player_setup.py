@@ -121,6 +121,79 @@ class ToolArchiveTests(unittest.TestCase):
             self.assertFalse((root / "tools/ffdec").exists())
 
 
+class JavaCapabilityTests(unittest.TestCase):
+    def test_source_compiler_without_a_javac_file_is_usable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            executable = Path(temporary) / "runtime/bin/java"
+            source_paths = []
+
+            def run(command, **kwargs):
+                if "-version" in command:
+                    return subprocess.CompletedProcess(
+                        command, 0, "", 'openjdk version "21.0.13"'
+                    )
+                source = Path(command[-1])
+                self.assertTrue(source.is_file())
+                source_paths.append(source)
+                return subprocess.CompletedProcess(
+                    command, 0, "WORTHY_OPPONENT_JAVA_SOURCE_OK", ""
+                )
+
+            with (
+                patch.object(
+                    setup_player.shutil, "which", return_value=str(executable)
+                ),
+                patch.object(setup_player.subprocess, "run", side_effect=run),
+            ):
+                self.assertEqual(
+                    setup_player._system_tool("java", 11), executable.resolve()
+                )
+            self.assertEqual(len(source_paths), 1)
+            self.assertFalse(source_paths[0].exists())
+
+    def test_present_compiler_filename_cannot_hide_a_failed_source_probe(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            executable = Path(temporary) / "runtime/bin/java"
+            executable.parent.mkdir(parents=True)
+            executable.with_name(
+                "javac.exe" if setup_player.os.name == "nt" else "javac"
+            ).write_bytes(b"stale launcher")
+            results = [
+                subprocess.CompletedProcess([], 0, "", 'openjdk version "21.0.13"'),
+                subprocess.CompletedProcess(
+                    [], 1, "", "source compiler is unavailable"
+                ),
+            ]
+            with (
+                patch.object(
+                    setup_player.shutil, "which", return_value=str(executable)
+                ),
+                patch.object(setup_player.subprocess, "run", side_effect=results),
+            ):
+                self.assertIsNone(setup_player._system_tool("java", 11))
+
+    def test_source_probe_timeout_is_unsuitable_and_its_source_is_removed(self):
+        source_paths = []
+
+        def run(command, **kwargs):
+            if "-version" in command:
+                return subprocess.CompletedProcess(
+                    command, 0, "", 'openjdk version "21.0.13"'
+                )
+            source_paths.append(Path(command[-1]))
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+
+        with (
+            patch.object(
+                setup_player.shutil, "which", return_value="/runtime/bin/java"
+            ),
+            patch.object(setup_player.subprocess, "run", side_effect=run),
+        ):
+            self.assertIsNone(setup_player._system_tool("java", 11))
+        self.assertEqual(len(source_paths), 1)
+        self.assertFalse(source_paths[0].exists())
+
+
 class SetupFlowTests(unittest.TestCase):
     def managed_receipt(self, root, game):
         names = [
