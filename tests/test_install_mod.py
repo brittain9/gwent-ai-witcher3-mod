@@ -351,6 +351,33 @@ class PreflightTests(Fixture):
 
 
 class InstallTests(Fixture):
+    def test_player_package_is_a_self_contained_mod_without_root_menu_files(self):
+        game, pins_path = make_game(self.root, filelists=True)
+        package = self.package(pins_path)
+        manifest = json.loads((package / "package-manifest.json").read_text())
+        self.assertEqual(len(manifest["files"]), 4)
+        self.assertTrue(
+            all(name.startswith("Mods/modW3GwentAI/") for name in manifest["files"])
+        )
+        before = snapshot(game / "bin")
+        receipt = install_package(
+            game, package_dir=package, runtime_dir=self.runtime
+        )
+        self.assertEqual(snapshot(game / "bin"), before)
+        self.assertEqual(json.loads(receipt.read_text())["filelist_edits"], [])
+        uninstall_package(game, runtime_dir=self.runtime)
+        self.assertEqual(snapshot(game / "bin"), before)
+
+    def test_player_preflight_does_not_require_the_external_menu_directory(self):
+        game, pins_path = make_game(self.root)
+        shutil.rmtree(game / install_mod.MENU_DIR)
+        package = self.package(pins_path)
+        before = snapshot(game)
+        install_package(game, package_dir=package, runtime_dir=self.runtime)
+        self.assertFalse((game / install_mod.MENU_DIR).exists())
+        uninstall_package(game, runtime_dir=self.runtime)
+        self.assertEqual(snapshot(game), before)
+
     def test_install_and_remove_archive_generated_scripts_and_preserve_shipped_scripts(
         self,
     ) -> None:
