@@ -166,7 +166,9 @@ def patch_sources(originals: dict[str, str]) -> dict[str, str]:
         ),
         "round result",
     )
-    final_anchor = "         this.gwaiFunMatchEnd(gameWinner);"
+    final_anchor = (
+        "         this.mcEndGameDialog.show(gameWinner,this.OnEndGameResult);"
+    )
     flow = _once(
         flow,
         final_anchor,

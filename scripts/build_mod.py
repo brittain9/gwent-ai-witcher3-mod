@@ -20,7 +20,6 @@ try:
         build_probe,
         cli_encoding,
         compiled_policy,
-        mod_fun,
         mod_practice,
         mod_trace,
     )
@@ -28,7 +27,6 @@ except ModuleNotFoundError:
     import build_probe
     import cli_encoding
     import compiled_policy
-    import mod_fun
     import mod_practice
     import mod_trace
 
@@ -52,9 +50,6 @@ MENU_CONFIG_ANCHOR = 'dispatchEvent(new GameEvent(GameEvent.REGISTER,"gwint.game
 FLOW_FIELD_ANCHOR = "public var gameStarted:Boolean = false;"
 FLOW_RESET_ANCHOR = "protected function state_begin_reset() : void\n      {"
 FLOW_END_ANCHOR = "public function EndGame(result:int) : void\n      {"
-FLOW_FINAL_RESULT_ANCHOR = (
-    "         this.mcEndGameDialog.show(gameWinner,this.OnEndGameResult);"
-)
 RECORDER_RANDOM_COUNTS = {
     "AIPlayerController": 15,
     "CardInstance": 10,
@@ -239,18 +234,6 @@ AI_MEMBERS = r"""      private var _gwaiRunner:Object = null;
             var networkMode:Boolean = this._gwaiView != null && this._gwaiView.policyMode == "network";
             var greedyFallback:Boolean = this._gwaiView != null && this._gwaiView.policyFallback === true;
             var startedAt:int = this._gwaiStartedAt;
-            var meter:String = "";
-            if(networkMode && !greedyFallback)
-            {
-               try
-               {
-                  meter = this.gameFlowControllerRef.gwaiMeterSuffix(Number(this._gwaiRunner.winChance));
-               }
-               catch(meterError:Error)
-               {
-                  meter = "";
-               }
-            }
             this._gwaiRunner = null;
             this._gwaiView = null;
             this._gwaiMoves = null;
@@ -262,7 +245,7 @@ AI_MEMBERS = r"""      private var _gwaiRunner:Object = null;
                this._decidedCardTransaction = null;
                this.attitude = TACTIC_PASS;
                var decisionMs:int = startedAt < 0 ? -1 : getTimer() - startedAt;
-               this.gwaiReportDecision(profile,false,"pass" + (networkMode ? (greedyFallback ? " greedy-fallback network " : " network ") + decisionMs + "ms" + meter : ""));
+               this.gwaiReportDecision(profile,false,"pass" + (networkMode ? (greedyFallback ? " greedy-fallback network " : " network ") + decisionMs + "ms" : ""));
                return false;
             }
             var manager:CardManager = CardManager.getInstance();
@@ -278,7 +261,7 @@ AI_MEMBERS = r"""      private var _gwaiRunner:Object = null;
                this._decidedCardTransaction = leaderTransaction;
                this.attitude = TACTIC_MAXIMIZE_WIN;
                decisionMs = startedAt < 0 ? -1 : getTimer() - startedAt;
-               this.gwaiReportDecision(profile,false,"leader" + (networkMode ? (greedyFallback ? " greedy-fallback network " : " network ") + decisionMs + "ms" + meter : ""));
+               this.gwaiReportDecision(profile,false,"leader" + (networkMode ? (greedyFallback ? " greedy-fallback network " : " network ") + decisionMs + "ms" : ""));
                return false;
             }
             if(move.kind != "play") throw new Error("policy returned an unknown action");
@@ -300,7 +283,7 @@ AI_MEMBERS = r"""      private var _gwaiRunner:Object = null;
             this._decidedCardTransaction = transaction;
             this.attitude = TACTIC_MAXIMIZE_WIN;
             decisionMs = startedAt < 0 ? -1 : getTimer() - startedAt;
-            this.gwaiReportDecision(profile,false,"play " + card.templateId + (networkMode ? (greedyFallback ? " greedy-fallback network " : " network ") + decisionMs + "ms" + meter : ""));
+            this.gwaiReportDecision(profile,false,"play " + card.templateId + (networkMode ? (greedyFallback ? " greedy-fallback network " : " network ") + decisionMs + "ms" : ""));
             return false;
          }
          catch(error:Error)
@@ -334,7 +317,6 @@ __GWAI_NATIVE_FALLBACK_BODY__
 """
 
 FLOW_METHODS = r"""      private var _gwaiSettings:Object = null;
-      private var _gwaiFun:Object = null;
       private var _gwaiSignalShown:Boolean = false;
       private var _gwaiInitiative:int = -1;
       private var _gwaiDecisionId:int = 0;
@@ -350,20 +332,10 @@ FLOW_METHODS = r"""      private var _gwaiSettings:Object = null;
          var vanillaDifficulty:int = int(data.vanillaDifficulty);
          if(vanillaDifficulty < 0 || vanillaDifficulty > 3) vanillaDifficulty = 2;
          var signal:Boolean = data.signal == undefined ? false : Boolean(data.signal);
-         var fun:Object = null;
-         try
-         {
-            fun = GwaiFun.parseSettings(data);
-         }
-         catch(funError:Error)
-         {
-            fun = null;
-         }
          this._gwaiSettings = {
             enabled:Boolean(data.enabled),vanillaDifficulty:vanillaDifficulty,
             signal:signal,
             trace:Boolean(data.trace),
-            fun:fun,storyTier:fun == null ? 0 : int(fun.storyTier),
             practice:Boolean(data.practice),practiceOpponent:String(data.practiceOpponent),
             practiceDeck:String(data.practiceDeck),practiceDeckDifficulty:int(data.practiceDeckDifficulty)
          };
@@ -372,7 +344,7 @@ FLOW_METHODS = r"""      private var _gwaiSettings:Object = null;
       public function gwaiTier() : int
       {
          if(this._gwaiSettings == null) return -1;
-         return GwaiFunLogic.tierFor(int(this._gwaiSettings.vanillaDifficulty),int(this._gwaiSettings.storyTier));
+         return Math.max(1,int(this._gwaiSettings.vanillaDifficulty));
       }
 
       public function gwaiProfileForPlayer(side:int) : int
@@ -380,84 +352,6 @@ FLOW_METHODS = r"""      private var _gwaiSettings:Object = null;
          if(side != CardManager.PLAYER_2 || this._gwaiSettings == null
             || !this._gwaiSettings.enabled || this._gwaiMatchEnded) return -1;
          return this.gwaiTier();
-      }
-
-      public function gwaiFunBegin() : void
-      {
-         try
-         {
-            this._gwaiFun = this._gwaiSettings == null ? null : GwaiFun.create(this._gwaiSettings.fun);
-            if(this._gwaiFun != null) this._gwaiFun.prepare();
-         }
-         catch(error:Error)
-         {
-            this._gwaiFun = null;
-         }
-      }
-
-      public function gwaiFunFrame() : void
-      {
-         if(this._gwaiFun == null) return;
-         try
-         {
-            if(this.gwaiFunInTutorial()) return;
-            if(this.currentPlayer != CardManager.PLAYER_1 || !this.sawStartMessage) return;
-            var human:BasePlayerController = this.playerControllers[CardManager.PLAYER_1];
-            if(human == null || human.turnOver
-               || human.currentRoundStatus != BasePlayerController.ROUND_PLAYER_STATUS_ACTIVE) return;
-            this._gwaiFun.playerTurn(this,CardManager.getInstance(),this._gwaiDecisionId);
-         }
-         catch(error:Error)
-         {
-            this._gwaiFun = null;
-         }
-      }
-
-      public function gwaiFunTurnEnded() : void
-      {
-         if(this._gwaiFun == null || this.currentPlayer != CardManager.PLAYER_1) return;
-         try
-         {
-            this._gwaiFun.playerMoved(this,CardManager.getInstance());
-         }
-         catch(error:Error)
-         {
-            this._gwaiFun = null;
-         }
-      }
-
-      public function gwaiFunMatchEnd(winner:int) : void
-      {
-         if(this._gwaiFun == null) return;
-         try
-         {
-            this._gwaiFun.matchEnded(this,winner,this._gwaiSettings != null && Boolean(this._gwaiSettings.enabled),
-               this.gwaiTier(),this.gwaiFunInTutorial());
-         }
-         catch(error:Error)
-         {
-         }
-         this._gwaiFun = null;
-      }
-
-      // The tutorial match: the menu's tutorial flag, or its tutorial panel on screen.
-      private function gwaiFunInTutorial() : Boolean
-      {
-         return (GwintGameMenu.mSingleton != null && GwintGameMenu.mSingleton.tutorialsOn)
-            || (this.mcTutorials != null && this.mcTutorials.visible);
-      }
-
-      public function gwaiMeterSuffix(winChance:Number) : String
-      {
-         if(this._gwaiSettings == null || this._gwaiSettings.fun == null || !this._gwaiSettings.fun.meter) return "";
-         try
-         {
-            return GwaiFunLogic.meterSuffix(winChance);
-         }
-         catch(error:Error)
-         {
-         }
-         return "";
       }
 
       public function gwaiMatchEnded() : Boolean
@@ -701,9 +595,6 @@ def _append_internal_classes(source: str, class_sources: dict[str, str]) -> str:
         "GwaiNetPolicy",
         "GwaiNetWeights",
         "GwaiNetTierConfig",
-        "GwaiFunConfig",
-        "GwaiFunLogic",
-        "GwaiFun",
     )
     data_classes = tuple(
         sorted(name for name in class_sources if name.startswith("GwaiNetWeightsData_"))
@@ -1206,7 +1097,7 @@ def patch_sources(
     flow = _once(
         flow, FLOW_FIELD_ANCHOR, "\n" + flow_methods, "GwintGameFlowController"
     )
-    reset_injection = "\n         this.gwaiCancelPending();\n         this._gwaiFun = null;\n         this._gwaiSignalShown = false;\n         this._gwaiInitiative = -1;\n         this._gwaiDecisionId = 0;"
+    reset_injection = "\n         this.gwaiCancelPending();\n         this._gwaiSignalShown = false;\n         this._gwaiInitiative = -1;\n         this._gwaiDecisionId = 0;"
     if probe:
         reset_injection += "\n         GwaiTimingProbe.beginMatch();"
     flow = _once(flow, FLOW_RESET_ANCHOR, reset_injection, "GwintGameFlowController")
@@ -1227,28 +1118,15 @@ def patch_sources(
         flow,
         "state_update_CoinToss",
         "         if(this.currentPlayer != CardManager.PLAYER_INVALID)\n         {",
-        "         if(this.currentPlayer != CardManager.PLAYER_INVALID)\n         {\n            this._gwaiMatchEnded = false;\n            if(this._gwaiInitiative < 0)\n            {\n               this._gwaiInitiative = this.currentPlayer;\n               this.gwaiPracticeBanner();\n               this.gwaiFunBegin();\n            }",
+        "         if(this.currentPlayer != CardManager.PLAYER_INVALID)\n         {\n            this._gwaiMatchEnded = false;\n            if(this._gwaiInitiative < 0)\n            {\n               this._gwaiInitiative = this.currentPlayer;\n               this.gwaiPracticeBanner();\n            }",
         "GwintGameFlowController policy initiative",
     )
     flow = _replace_in_method(
         flow,
         "state_update_PlayerTurn",
         "         if(currentPlayerController.turnOver)\n         {",
-        "         if(currentPlayerController.turnOver)\n         {\n            this._gwaiDecisionId++;\n            this.gwaiFunTurnEnded();",
+        "         if(currentPlayerController.turnOver)\n         {\n            this._gwaiDecisionId++;",
         "GwintGameFlowController policy decision id",
-    )
-    flow = _insert_method_start(
-        flow,
-        "state_update_PlayerTurn",
-        "         this.gwaiFunFrame();",
-        "GwintGameFlowController fun frame",
-    )
-    flow = _replace_in_method(
-        flow,
-        "state_begin_ShowingFinalResult",
-        FLOW_FINAL_RESULT_ANCHOR,
-        "         this.gwaiFunMatchEnd(gameWinner);\n" + FLOW_FINAL_RESULT_ANCHOR,
-        "GwintGameFlowController fun match end",
     )
     menu = _once(
         menu,
@@ -1361,7 +1239,6 @@ def verify_sources(
     for source, expected, label in checks:
         if expected not in source:
             raise ModBuildError(f"source verification is missing {label}: {expected}")
-    verify_fun_sources(ai, flow)
     compact_ai = "".join(ai.split())
     for method_name, expression, label in (
         (
@@ -1414,426 +1291,6 @@ def verify_sources(
             )
     if "Math.random" in core or "opponentHand" in core or "deckOrder" in core:
         raise ModBuildError("policy core uses randomness or hidden information")
-
-
-FUN_FLOW_HOOKS = (
-    ("state_update_PlayerTurn", "this.gwaiFunFrame();", "per-frame fun hook"),
-    (
-        "state_update_PlayerTurn",
-        "this._gwaiDecisionId++;this.gwaiFunTurnEnded();",
-        "turn-end fun hook",
-    ),
-    (
-        "state_begin_ShowingFinalResult",
-        "this.gwaiFunMatchEnd(gameWinner);this.mcEndGameDialog.show(",
-        "match-end fun hook",
-    ),
-    ("state_begin_reset", "this._gwaiFun=null;", "per-match fun reset"),
-    ("state_update_CoinToss", "this.gwaiFunBegin();", "match-start fun setup"),
-)
-# FFDec re-exports statements in its own forms (for example ++x for x++), so the compiled export is
-# checked for the calls; the patched source above is checked for their exact placement.
-FUN_FLOW_COMPILED_HOOKS = (
-    ("state_update_PlayerTurn", "gwaiFunFrame();", "per-frame fun hook"),
-    ("state_update_PlayerTurn", "gwaiFunTurnEnded();", "turn-end fun hook"),
-    ("state_begin_ShowingFinalResult", "gwaiFunMatchEnd(", "match-end fun hook"),
-    ("state_begin_reset", "_gwaiFun=null;", "per-match fun reset"),
-    ("state_update_CoinToss", "gwaiFunBegin();", "match-start fun setup"),
-)
-
-
-# Each flow entry point is one try/catch; outside it only these guards may run (they cannot throw).
-FUN_ENTRY_GUARDS = {
-    "gwaiFunBegin": "",
-    "gwaiFunFrame": "if(this._gwaiFun==null)return;",
-    "gwaiFunTurnEnded": "if(this._gwaiFun==null||this.currentPlayer!=CardManager.PLAYER_1)return;",
-    "gwaiFunMatchEnd": "if(this._gwaiFun==null)return;this._gwaiFun=null;",
-    "gwaiMeterSuffix": 'if(this._gwaiSettings==null||this._gwaiSettings.fun==null||!this._gwaiSettings.fun.meter)return"";return"";',
-}
-FUN_FLOW_METHODS = tuple(FUN_ENTRY_GUARDS) + ("gwaiFunInTutorial",)
-# Calls that take a seat, and the position of the seat argument. Each must name the human seat.
-FUN_SEAT_ARGUMENTS = {
-    "getCardInstanceList": 1,
-    "getCardLeader": 0,
-    "GwaiCapture.capture": 2,
-    "GwaiCapture.legalMoves": 1,
-}
-FUN_HUMAN_SEAT = "CardManager.PLAYER_1"
-# The two places a feature may name the AI seat: the match result and a spy's target side.
-FUN_AI_SEAT_USES = (
-    "winner==CardManager.PLAYER_2",
-    "int(move.targetPlayer)==CardManager.PLAYER_2",
-)
-# Sampling, the AI's decision path, its runner, and dynamic class lookup.
-FUN_FORBIDDEN_NAMES = (
-    "random",
-    "decide",
-    "evaluate",
-    "GwaiRunner",
-    "GwaiPolicyCore",
-    "_gwaiRunner",
-    "lastWinChance",
-    "positionValue",
-    "getDefinitionByName",
-    "getQualifiedClassName",
-)
-# An allowlist: the only members the feature code may use on the card manager and the flow it is
-# handed, and on each class it names. Any other member, or any other class, is refused.
-FUN_MANAGER_MEMBERS = ("getCardInstance", "getCardInstanceList", "getCardLeader")
-FUN_FLOW_ARGUMENT_MEMBERS = ("mcMessageQueue",)
-FUN_CLASS_MEMBERS: dict[str, tuple[str, ...] | None] = {
-    "CardManager": (
-        "PLAYER_1",
-        "PLAYER_2",
-        "PLAYER_INVALID",
-        "CARD_LIST_LOC_HAND",
-        "CARD_LIST_LOC_INVALID",
-    ),
-    "GwaiCapture": ("capture", "legalMoves"),
-    "GwaiNetPolicy": ("insight", "winChanceOf"),
-    "GwaiNetWeights": ("loadStep", "isLoaded"),
-    "GwaiNetTierConfig": ("dataFor",),
-    "GwintGameMenu": ("mSingleton",),
-    "BasePlayerController": ("ROUND_PLAYER_STATUS_ACTIVE",),
-    "GwaiFun": ("create", "parseSettings"),
-    "GwaiFunConfig": None,
-    "GwaiFunLogic": None,
-    "Math": None,
-}
-# The flow's feature methods: their own members, and the card manager they hand to GwaiFun.
-FUN_FLOW_SELF_MEMBERS = (
-    "_gwaiFun",
-    "_gwaiSettings",
-    "_gwaiDecisionId",
-    "currentPlayer",
-    "sawStartMessage",
-    "playerControllers",
-    "mcTutorials",
-    "gwaiTier",
-    "gwaiFunInTutorial",
-)
-FUN_FLOW_EXTRA_CLASS_MEMBERS = {"CardManager": ("getInstance",)}
-# Callees that may receive the card manager or the flow itself.
-FUN_HANDLE_CALLEES = ("GwaiCapture.capture", "GwaiCapture.legalMoves")
-FUN_CONSTRUCTIBLE = ("GwaiFun", "Error")
-# The pure logic class reaches no game object.
-FUN_LOGIC_FORBIDDEN = (
-    "CardManager",
-    "GwintGameFlowController",
-    "GwintGameMenu",
-    "GwaiCapture",
-    "GwaiNetPolicy",
-    "GwaiFunConfig",
-    "getInstance",
-    "mSingleton",
-    "dispatchEvent",
-    "PushMessage",
-)
-
-
-def _outside_try(compact_body: str) -> str:
-    """The method body with every try{...}catch(...){...} removed."""
-    remainder = []
-    index = 0
-    while index < len(compact_body):
-        if compact_body.startswith("try{", index) and (
-            index == 0
-            or not (compact_body[index - 1].isalnum() or compact_body[index - 1] == "_")
-        ):
-            depth = 0
-            cursor = index + 3
-            while True:
-                char = compact_body[cursor]
-                depth += char == "{"
-                depth -= char == "}"
-                cursor += 1
-                if depth == 0:
-                    break
-            match = re.match(r"catch\([^)]*\)\{", compact_body[cursor:])
-            if match is None:
-                raise ModBuildError("a try block has no catch")
-            depth = 1
-            cursor += match.end()
-            while depth:
-                depth += compact_body[cursor] == "{"
-                depth -= compact_body[cursor] == "}"
-                cursor += 1
-            index = cursor
-            continue
-        remainder.append(compact_body[index])
-        index += 1
-    return "".join(remainder)
-
-
-def verify_fun_sources(ai: str, flow: str) -> None:
-    """The opt-in features hook only where planned, and every entry point contains its errors."""
-    compact_flow = "".join(flow.split())
-    for method_name, expression, label in FUN_FLOW_HOOKS:
-        if not _method_contains(compact_flow, method_name, expression):
-            raise ModBuildError(
-                f"GwintGameFlowController is missing the {label}: {expression}"
-            )
-    for method_name, guards in FUN_ENTRY_GUARDS.items():
-        body = "".join(_method_body(flow, method_name).split())
-        if "try{" not in body or _outside_try(body) != guards:
-            raise ModBuildError(
-                f"GwintGameFlowController.{method_name} must contain its own errors"
-            )
-    if "if(this._gwaiFun!=null)this._gwaiFun.prepare();" not in "".join(
-        _method_body(flow, "gwaiFunBegin").split()
-    ):
-        raise ModBuildError(
-            "GwintGameFlowController.gwaiFunBegin must start the reading network's loader"
-        )
-    configure = "".join(_method_body(flow, "gwaiConfigureSettings").split())
-    if (
-        "try{fun=GwaiFun.parseSettings(data);}catch(funError:Error){fun=null;}"
-        not in configure
-    ):
-        raise ModBuildError(
-            "GwintGameFlowController.gwaiConfigureSettings must contain the feature settings' errors"
-        )
-    profile = "".join(_method_body(flow, "gwaiProfileForPlayer").split())
-    if (
-        "returnthis.gwaiTier();" not in profile
-        or "!this._gwaiSettings.enabled" not in profile
-    ):
-        raise ModBuildError(
-            "the AI profile must keep the enabled switch and use the shared tier rule"
-        )
-    if "returnGwaiFunLogic.tierFor(" not in "".join(
-        _method_body(flow, "gwaiTier").split()
-    ):
-        raise ModBuildError("the AI tier must come from the shared, tested tier rule")
-    meter = "try{meter=this.gameFlowControllerRef.gwaiMeterSuffix(Number(this._gwaiRunner.winChance));}"
-    if meter + 'catch(meterError:Error){meter="";}' not in "".join(ai.split()):
-        raise ModBuildError(
-            "AIPlayerController must build the win-chance meter suffix inside its own try"
-        )
-
-
-def _seat_violations(compact: str) -> list[str]:
-    found = []
-    for call, position in FUN_SEAT_ARGUMENTS.items():
-        for match in re.finditer(r"(?<!\w)" + re.escape(call) + r"\(", compact):
-            arguments = _call_arguments(compact, match.end() - 1)
-            seat = arguments[position] if len(arguments) > position else ""
-            if seat != FUN_HUMAN_SEAT:
-                found.append(f"{call}(...{seat})")
-    rest = compact.replace("this.playerControllers[CardManager.PLAYER_1]", "")
-    if re.search(r"\bplayerControllers\b", rest):
-        found.append(
-            "playerControllers other than this.playerControllers[CardManager.PLAYER_1]"
-        )
-    return found
-
-
-def _without_comments(source: str) -> str:
-    """AS3 source with // and /* */ comments removed; string literals are kept as they are."""
-    result = []
-    index = 0
-    quote = ""
-    while index < len(source):
-        char = source[index]
-        if quote:
-            result.append(char)
-            if char == "\\" and index + 1 < len(source):
-                result.append(source[index + 1])
-                index += 2
-                continue
-            if char == quote:
-                quote = ""
-            index += 1
-        elif char in "\"'":
-            quote = char
-            result.append(char)
-            index += 1
-        elif source.startswith("//", index):
-            end = source.find("\n", index)
-            index = len(source) if end < 0 else end
-        elif source.startswith("/*", index):
-            end = source.find("*/", index + 2)
-            index = len(source) if end < 0 else end + 2
-        else:
-            result.append(char)
-            index += 1
-    return "".join(result)
-
-
-def _enclosing_callee(source: str, position: int) -> str:
-    """The callee of the innermost call whose argument list holds `position`, or ""."""
-    depth = 0
-    for index in range(position - 1, -1, -1):
-        char = source[index]
-        if char in ")]}":
-            depth += 1
-        elif char in "([{":
-            if depth == 0:
-                if char != "(":
-                    return ""
-                callee = re.search(r"([\w$.]+)\s*$", source[:index])
-                return callee.group(1) if callee else ""
-            depth -= 1
-    return ""
-
-
-def _member_violations(name: str, spaced: str) -> list[str]:
-    """Members outside the allowlist, and the game handles passed anywhere but to an allowed callee."""
-    flow_method = name.startswith("GwintGameFlowController.")
-    found = []
-    for member in re.findall(r"\bmanager\s*\.\s*(\w+)", spaced):
-        if member not in FUN_MANAGER_MEMBERS:
-            found.append(f"manager.{member}")
-    for member in re.findall(r"\bflow\s*\.\s*(\w+)", spaced):
-        if member not in FUN_FLOW_ARGUMENT_MEMBERS:
-            found.append(f"flow.{member}")
-    for match in re.finditer(r"(?<![\w$.])([A-Z][\w$]*)\s*\.\s*(\w+)", spaced):
-        owner, member = match.groups()
-        if re.fullmatch(r"[A-Z][A-Z0-9_]*", owner):
-            continue  # a class's own constant, such as STAT_PREFIXES.length
-        if owner not in FUN_CLASS_MEMBERS:
-            found.append(f"{owner}.{member}")
-            continue
-        allowed = FUN_CLASS_MEMBERS[owner]
-        if flow_method:
-            allowed = (
-                None
-                if allowed is None
-                else allowed + FUN_FLOW_EXTRA_CLASS_MEMBERS.get(owner, ())
-            )
-        if allowed is not None and member not in allowed:
-            found.append(f"{owner}.{member}")
-    for owner in re.findall(r"\bnew\s+([A-Z][\w$]*)", spaced):
-        if owner not in FUN_CONSTRUCTIBLE:
-            found.append(f"new {owner}")
-    for match in re.finditer(
-        r"\b(manager|flow)\b(?!\s*\.)(?!\s*:\s*(?:CardManager|GwintGameFlowController)\b)",
-        spaced,
-    ):
-        callee = _enclosing_callee(spaced, match.start())
-        if callee not in FUN_HANDLE_CALLEES and not callee.startswith("this."):
-            found.append(f"{match.group(1)} handed to {callee or 'a variable'}")
-    if flow_method:
-        for member in re.findall(r"\bthis\s*\.\s*(\w+)", spaced):
-            if member not in FUN_FLOW_SELF_MEMBERS:
-                found.append(f"this.{member}")
-        for match in re.finditer(r"\bthis\b(?!\s*\.)", spaced):
-            if not _enclosing_callee(spaced, match.start()).startswith(
-                "this._gwaiFun."
-            ):
-                found.append("the flow handed to a variable")
-    elif re.search(r"\bthis\b(?!\s*\.)", spaced):
-        found.append("this handed to a variable")
-    return found
-
-
-_ARRAY_LITERAL_WORDS = frozenset({"return", "in", "case", "typeof", "delete", "throw"})
-
-
-def _hidden_lookup(source: str) -> str:
-    """The first bracket lookup the lint cannot read: a string key, or one on a class or game object."""
-    for match in re.finditer(r"\[", source):
-        before = source[: match.start()].rstrip()
-        word = re.search(r"([A-Za-z_$][\w$]*)$", before)
-        if before.endswith((")", "]")):
-            target = before[-1]
-        elif word is not None and word.group(1) not in _ARRAY_LITERAL_WORDS:
-            target = word.group(1)
-        else:
-            continue
-        key = source[match.end() :].lstrip()[:1]
-        if (
-            key in "\"'"
-            or re.fullmatch(r"[A-Z][a-z]\w*", target)
-            or target in ("flow", "manager", "this")
-        ):
-            return (
-                target
-                + "["
-                + source[match.end() : match.end() + 20].split("]")[0]
-                + "]"
-            )
-    return ""
-
-
-def verify_fun_helpers(helpers: dict[str, str], flow: str) -> None:
-    """A lint, not a proof: the feature code reads the human seat, never samples, and stays off
-    the AI's decision path. It scans GwaiFun, GwaiFunLogic and the flow's feature methods for the
-    forms below; a card looked up by instance id and values passed through locals are review's."""
-    fun = helpers.get("GwaiFun", "")
-    logic = helpers.get("GwaiFunLogic", "")
-    for expected in (
-        "function parseSettings(",
-        "function create(",
-        "function playerTurn(",
-        "function playerMoved(",
-        "function matchEnded(",
-        "function prepare(",
-        "GwaiNetPolicy.insight(",
-        "GwaiNetWeights.loadStep(",
-        "GwaiNetWeights.isLoaded(",
-        "OnW3GwentFunStat",
-        "OnW3GwentFunCard",
-        "OnW3GwentFunNote",
-        "OnW3GwentFunSave",
-    ):
-        if expected not in fun:
-            raise ModBuildError(f"GwaiFun is missing {expected}")
-    for expected in (
-        "function featureFlags(",
-        "function tierFor(",
-        "function postGameLines(",
-    ):
-        if expected not in logic:
-            raise ModBuildError(f"GwaiFunLogic is missing {expected}")
-    scanned = {"GwaiFun": fun, "GwaiFunLogic": logic}
-    for method_name in FUN_FLOW_METHODS:
-        scanned[f"GwintGameFlowController.{method_name}"] = _method_body(
-            flow, method_name
-        )
-    for name, source in scanned.items():
-        source = _without_comments(source)
-        compact = "".join(source.split())
-        violations = _seat_violations(compact)
-        if violations:
-            raise ModBuildError(
-                f"{name} reads a seat other than the human's: {violations[0]}"
-            )
-        rest = compact
-        for allowed in FUN_AI_SEAT_USES:
-            rest = rest.replace(allowed, "")
-        if re.search(r"\bPLAYER_2\b", rest):
-            raise ModBuildError(
-                f"{name} refers to the AI seat beyond the result and a spy's target side"
-            )
-        spaced = " ".join(source.split())
-        for forbidden in FUN_FORBIDDEN_NAMES:
-            if re.search(
-                r"\b" + re.escape(forbidden) + r"\b",
-                spaced,
-                re.IGNORECASE if forbidden == "random" else 0,
-            ):
-                raise ModBuildError(
-                    f"{name} must not sample or reach the AI's decision path: {forbidden}"
-                )
-        members = _member_violations(name, spaced)
-        if members:
-            raise ModBuildError(
-                f"{name} uses a member outside the feature allowlist: {members[0]}"
-            )
-        lookup = _hidden_lookup(source)
-        if lookup:
-            raise ModBuildError(
-                f"{name} uses a member lookup the check cannot read: {lookup}"
-            )
-    pure = _without_comments(logic)
-    for forbidden in FUN_LOGIC_FORBIDDEN:
-        if re.search(r"\b" + re.escape(forbidden) + r"\b", pure):
-            raise ModBuildError(
-                f"GwaiFunLogic must stay pure: it refers to {forbidden}"
-            )
-    for name in ("GwaiFun", "GwaiFunLogic"):
-        verify_message_images(helpers.get(name, ""), name)
 
 
 def verify_timing_probe_sources(
@@ -2041,38 +1498,6 @@ def verify_compiled_sources(
             if expected not in source:
                 raise ModBuildError(f"FFDec export is missing {name} member {expected}")
     verify_opponent_hand_length_only(helpers["GwaiCapture"])
-    for method_name, expression, label in FUN_FLOW_COMPILED_HOOKS:
-        if not _method_contains("".join(flow.split()), method_name, expression):
-            raise ModBuildError(f"FFDec export is missing the {label}")
-    for name, required in {
-        "GwaiFun": (
-            "function playerTurn(",
-            "function playerMoved(",
-            "function matchEnded(",
-            "function prepare(",
-            "function loaderTick(",
-            "OnW3GwentFunNote",
-        ),
-        "GwaiFunLogic": (
-            "function postGameLines(",
-            "function costliest(",
-            "function meterSuffix(",
-            "function tierFor(",
-            "function featureFlags(",
-        ),
-        "GwaiFunConfig": (
-            "function storyTierFor(",
-            "STORY_TIERS",
-            "MAX_RECORDS",
-            "READING_TIER",
-        ),
-    }.items():
-        source = helpers.get(name, "")
-        if not source or f"class {name}" not in source:
-            raise ModBuildError(f"FFDec export is missing compiled helper class {name}")
-        for expected in required:
-            if expected not in source:
-                raise ModBuildError(f"FFDec export is missing {name} member {expected}")
     for name, required in {
         "GwaiNetPolicy": (
             "function evaluate(",
@@ -2426,9 +1851,6 @@ def _prepare_policy_exports(
         "GwaiNetPolicy": network_source.read_text(encoding="utf-8"),
         "GwaiNetWeights": (AS3_DIR / "GwaiNetWeights.as").read_text(encoding="utf-8"),
         "GwaiNetTierConfig": _tier_config_source(tier_class_names, temperatures),
-        "GwaiFunConfig": mod_fun.fun_config_source(),
-        "GwaiFunLogic": (AS3_DIR / "GwaiFunLogic.as").read_text(encoding="utf-8"),
-        "GwaiFun": (AS3_DIR / "GwaiFun.as").read_text(encoding="utf-8"),
     }
     for checkpoint_hash, class_name in class_by_hash.items():
         sources[class_name] = (
@@ -2495,22 +1917,9 @@ def _prepare_policy_exports(
             "tier_policies": tier_policies,
             "difficulty_ladder": _difficulty_ladder(tier_policies),
             "policy_exports": policy_exports,
-            "fun_features": _fun_features_manifest(tier_policies),
         },
         tier_policies,
     )
-
-
-def _fun_features_manifest(tier_policies: dict[str, Any]) -> dict[str, Any]:
-    """The feature set, with the exact network the human seat's readings use."""
-    section = mod_fun.manifest_section()
-    tier = mod_fun.TIER_NAMES[mod_fun.READING_TIER]
-    section["reading_network"] = {
-        "tier": tier,
-        "checkpoint_sha256": tier_policies[tier]["checkpoint_sha256"],
-        "export_sha256": tier_policies[tier]["export_sha256"],
-    }
-    return section
 
 
 def _add_timing_probe_sources(sources: dict[str, str]) -> dict[str, str]:
@@ -2787,7 +2196,6 @@ def build(
                     sources["GwaiPolicyCore"],
                     sources["GwaiRunner"],
                 )
-                verify_fun_helpers(sources, patched["GwintGameFlowController"])
                 if probe:
                     verify_timing_probe_sources(patched, sources)
                 patched.update(

@@ -71,31 +71,6 @@ for(const enabled of [false,true]) for(const [native,expected] of [[0,1],[1,1],[
         result = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_statistics_packet_contains_stock_and_exactly_three_trained_buckets(
-        self,
-    ) -> None:
-        source = (ROOT / "mod/ai/settings/scripts/local/gwai_settings.ws").read_text()
-        body = _method_body(source, "GwaiStatsSend")
-        body = re.sub(r"var (\w+)\s*:\s*array<\s*string\s*>;", r"var \1=[];", body)
-        body = (
-            re.sub(r"\b(\w+)\s*:\s*(?:int|string)\b", r"\1", body)
-            .replace(".PushBack(", ".push(")
-            .replace(".Size()", ".length")
-        )
-        harness = r"""
-const assert=require('node:assert/strict');const packet={},reads=[];
-const env={packet:{SetMemberFlashInt(k,v){packet[k]=v}},deckName:'test',GwaiStatsCount(k){reads.push(k);return 1}};
-new Function('env','with(env){'+BODY+'}')(env);
-const expected=['vanilla','easy','normal','hard'].flatMap(tier=>['won','lost','drawn'].map(outcome=>'stats_'+tier+'_'+outcome));
-expected.push(...['won','lost','drawn'].map(outcome=>'stats_deck_'+outcome));
-assert.deepEqual(Object.keys(packet).sort(),expected.sort());
-assert.ok(reads.every(key=>!key.startsWith('impossible')));
-""".replace("BODY", json.dumps(body))
-        result = subprocess.run(
-            ["node", "-e", harness], capture_output=True, text=True, check=False
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-
     def test_reports_actual_decision_source_and_keeps_failures_with_banners_off(
         self,
     ) -> None:

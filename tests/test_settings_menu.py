@@ -124,7 +124,7 @@ function array(items=[]) {return {items, GetLength(){return items.length}, GetEl
  PushBackFlashObject(v){items.push(v)},PushBackFlashString(v){items.push(v)}}}
 function object(values={}) {const obj={values};for(const type of ['String','Int','UInt','Bool','Array']){
  obj['SetMemberFlash'+type]=(k,v)=>{values[k]=v};obj['GetMemberFlash'+type]=k=>values[k];}return obj;}
-const sentinel=31415, values={GwaiSettingsVersion:'3',GwaiEnabled:'true',GwaiDevOpponent:'38',GwaiLab:'true'};
+const sentinel=31415, values={GwaiSettingsVersion:'3',GwaiEnabled:'true',GwaiDevOpponent:'38'};
 let saves=0, nativeCalls=0, publishes=0, initializeCalls=0;
 const cfg={GetRawConfigValueByStr(g,k){assert.equal(g,'W3GwentAI');return values[k]??''},
  SetRawConfigValueByStr(g,k,v){assert.equal(g,'W3GwentAI');values[k]=v},
@@ -155,7 +155,7 @@ for(const hasMods of [false,true])for(const isMainMenu of [false,true]){
  if(hasMods){assert.equal(mods,originalMods);assert.equal(mods.values.subElements.items[0],unrelated)}
  const page=mods.values.subElements.items.find(o=>o.values.id==='gwai_trained_opponents');
  assert.equal(page.values.label,'Gwent: Trained Opponents');assert.equal(page.values.type,6);
- const rows=page.values.subElements.items;assert.equal(rows.length,17);
+ const rows=page.values.subElements.items;assert.equal(rows.length,6);
  assert.deepEqual(rows.map(o=>o.values.id),expected.map(o=>o.id));
  for(let i=0;i<rows.length;i++){
   const row=rows[i].values,spec=expected[i];assert.equal(row.label,spec.label);assert.equal(row.type,kinds[spec.kind]);
@@ -163,7 +163,7 @@ for(const hasMods of [false,true])for(const isMainMenu of [false,true]){
   assert.deepEqual(row.subElements.items,spec.choices);assert.equal(row.disabled,false);
  }
  assert.equal(rows.find(o=>o.values.id==='GwaiDevOpponent').values.current,'38');
- assert.equal(values.GwaiMenuTransport,'script');assert.equal(values.GwaiMenuVarCount,'17');
+ assert.equal(values.GwaiMenuTransport,'script');assert.equal(values.GwaiMenuVarCount,'6');
 }
 assert.equal(initializeCalls,4);assert.equal(publishes,4);assert.equal(nativeCalls,4);
 for(const spec of expected){

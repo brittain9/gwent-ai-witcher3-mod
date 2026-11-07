@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from scripts import mod_fun, mod_practice
+from scripts import mod_practice
 
 
 class PracticeCatalogTests(unittest.TestCase):
@@ -15,12 +15,15 @@ class PracticeCatalogTests(unittest.TestCase):
             mod_practice.DECKS[:5],
             ("NKHard", "NilfHard", "ScoiaHard", "NMLHard", "SkelHard"),
         )
-        named = {
-            name
-            for name, kind in mod_fun.DECK_CATEGORIES.items()
-            if kind in ("named", "tournament")
-        }
-        self.assertEqual(set(mod_practice.DECKS[5:]), named)
+        self.assertEqual(len(mod_practice.DECKS), 39)
+        self.assertEqual(sum("Tournament" in deck for deck in mod_practice.DECKS), 9)
+        self.assertEqual(
+            mod_practice.label("CrossroadsInnkeeper"), "Crossroads Innkeeper"
+        )
+        self.assertEqual(
+            mod_practice.label("ScoiaTournament2"),
+            "the second Scoia'tael tournament deck",
+        )
         self.assertNotIn("tutorialDeck", mod_practice.DECKS)
 
     def test_every_named_opponent_has_actual_decks_in_the_local_game_catalog(

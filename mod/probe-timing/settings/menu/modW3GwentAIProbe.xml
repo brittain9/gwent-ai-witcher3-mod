@@ -3,7 +3,6 @@
     <Group id="W3GwentAI" displayName="mainmenu_mods.mainmenu_gwent">
         <VisibleVars>
             <Var id="GwaiEnabled" displayName="Enable AI" displayType="TOGGLE" tags="nonLocalizedName" />
-            <Var id="GwaiPracticeHeader" displayName="Practice matches" displayType="SEPARATOR" tags="nonLocalizedName" />
             <Var id="GwaiDevOpponent" displayName="Practice opponent / deck" displayType="OPTIONS" tags="nonLocalizedName;customNames;nonLocalized">
                 <OptionsArray>
                     <Option id="0" displayName="Generic: Northern Realms">
@@ -126,16 +125,6 @@
                 </OptionsArray>
             </Var>
             <Var id="GwaiDevStart" displayName="Start practice match (loaded game only)" displayType="BUTTON" tags="nonLocalizedName" />
-            <Var id="GwaiAssistanceHeader" displayName="Optional assistance" displayType="SEPARATOR" tags="nonLocalizedName" />
-            <Var id="GwaiCoach" displayName="Coach hint on your turn" displayType="TOGGLE" tags="nonLocalizedName" />
-            <Var id="GwaiStory" displayName="Stronger story opponents" displayType="TOGGLE" tags="nonLocalizedName" />
-            <Var id="GwaiLabHeader" displayName="Analysis tools" displayType="SEPARATOR" tags="nonLocalizedName" />
-            <Var id="GwaiLab" displayName="Lab mode (analysis tools)" displayType="TOGGLE" tags="nonLocalizedName" />
-            <Var id="GwaiMeter" displayName="Win-chance meter (the AI's reading)" displayType="TOGGLE" tags="indent;nonLocalizedName" />
-            <Var id="GwaiPostGame" displayName="Post-game coach card" displayType="TOGGLE" tags="indent;nonLocalizedName" />
-            <Var id="GwaiBlunder" displayName="Blunder alert" displayType="TOGGLE" tags="indent;nonLocalizedName" />
-            <Var id="GwaiStats" displayName="Match stats" displayType="TOGGLE" tags="indent;nonLocalizedName" />
-            <Var id="GwaiDiagnosticsHeader" displayName="Troubleshooting" displayType="SEPARATOR" tags="nonLocalizedName" />
             <Var id="GwaiDevReport" displayName="Show AI status (current / latest match)" displayType="BUTTON" tags="nonLocalizedName" />
             <Var id="GwaiSignal" displayName="Show decision source" displayType="TOGGLE" tags="nonLocalizedName" />
             <Var id="GwaiTrace" displayName="Record public play-by-play" displayType="TOGGLE" tags="nonLocalizedName" />

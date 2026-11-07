@@ -7,12 +7,6 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-try:
-    from scripts.mod_fun import deck_label
-except ModuleNotFoundError:
-    from mod_fun import deck_label
-
-
 ROOT = Path(__file__).resolve().parents[1]
 # Saved values are zero-based positions: preserve this order and append entries.
 DECKS = (
@@ -71,6 +65,30 @@ LABELS = {
 }
 BEGIN = "// BEGIN GENERATED PRACTICE OPPONENTS"
 END = "// END GENERATED PRACTICE OPPONENTS"
+
+
+_FACTIONS = {
+    "NK": "Northern Realms",
+    "Nilf": "Nilfgaard",
+    "NML": "Monsters",
+    "Scoia": "Scoia'tael",
+    "Skel": "Skellige",
+}
+
+
+def deck_label(deck: str) -> str:
+    """A readable label for a practice opponent."""
+    match = re.fullmatch(
+        r"(NK|Nilf|NML|Scoia|Skel)(Easy|Normal|Hard|Prologue|Tournament2?)", deck
+    )
+    if match:
+        faction, kind = _FACTIONS[match.group(1)], match.group(2)
+        if kind == "Tournament":
+            return f"the {faction} tournament deck"
+        if kind == "Tournament2":
+            return f"the second {faction} tournament deck"
+        return f"a {faction} player ({'medium' if kind == 'Normal' else kind.lower()})"
+    return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", deck)
 
 
 def label(deck: str) -> str:

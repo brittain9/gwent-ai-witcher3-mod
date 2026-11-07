@@ -169,8 +169,7 @@ for(const enabled of [false,true]) for(const tier of [1,2,3]) {
     };
     Object.assign(f.env, {
         GwaiSettingsInitialize() {}, GwaiDiagnosticsInitialize() {},
-        GwaiSettingsSignal: () => true,GwaiSettingsToggleOn: k => k === 'GwaiStory',
-        GwaiLabToggleOn: () => false, m_flashValueStorage: storage
+        GwaiSettingsSignal: () => true,GwaiSettingsToggleOn: () => false, m_flashValueStorage: storage
     });
     run('configure', f.env);
     assert.equal(packet.enabled, enabled);
@@ -180,14 +179,14 @@ for(const enabled of [false,true]) for(const tier of [1,2,3]) {
     assert.equal(Object.hasOwn(packet,'clockEnabled'),false);
     assert.equal(Object.hasOwn(packet,'clockScale'),false);
     assert.equal(packet.practiceDeckDifficulty, tier); // Actual NPC deck still follows the unchanged game setting.
-    assert.equal(packet.story, false);
+    assert.equal(Object.hasOwn(packet,'story'),false);
     assert.equal(f.values.GwaiEnabled,String(enabled)); // Practice does not overwrite the global preference.
     f.m.GwaiDevRestore();
     run('configure', f.env);
     assert.equal(packet.enabled,enabled);
     assert.equal(packet.practice, false);
     assert.equal(packet.vanillaDifficulty, tier);
-    assert.equal(packet.story, true);
+    assert.equal(Object.hasOwn(packet,'story'),false);
 }
 {
     const f = fixture();

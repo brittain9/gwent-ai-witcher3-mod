@@ -31,14 +31,7 @@ function GwaiSettingsInitialize() : void
     {
         cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiSignal", normalizedSignal);
     }
-    GwaiSettingsNormalizeOff(cfg, "GwaiCoach");
     GwaiSettingsNormalizeOff(cfg, "GwaiTrace");
-    GwaiSettingsNormalizeOff(cfg, "GwaiStory");
-    GwaiSettingsNormalizeOff(cfg, "GwaiLab");
-    GwaiSettingsNormalizeOff(cfg, "GwaiMeter");
-    GwaiSettingsNormalizeOff(cfg, "GwaiPostGame");
-    GwaiSettingsNormalizeOff(cfg, "GwaiBlunder");
-    GwaiSettingsNormalizeOff(cfg, "GwaiStats");
     if (cfg.GetRawConfigValueByStr("W3GwentAI", "GwaiDevOpponent") == "")
     {
         cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiDevOpponent", "0");
@@ -82,43 +75,6 @@ function GwaiSettingsToggleOn(id : string) : bool
 {
     var raw : string = theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("W3GwentAI", id);
     return raw == "true" || raw == "1";
-}
-
-// Lab tools (meter, post-game card, blunder alert, match stats) are on only under Lab mode.
-function GwaiLabToggleOn(id : string) : bool
-{
-    return GwaiSettingsToggleOn("GwaiLab") && GwaiSettingsToggleOn(id);
-}
-
-function GwaiStatsCount(key : string) : int
-{
-    return StringToInt(theGame.GetInGameConfigWrapper().GetRawConfigValueByStr("W3GwentAIStats", key), 0);
-}
-
-function GwaiStatsSend(packet : CScriptedFlashObject, deckName : string) : void
-{
-    var buckets : array< string >;
-    var outcomes : array< string >;
-    var i : int;
-    var j : int;
-    buckets.PushBack("vanilla");
-    buckets.PushBack("easy");
-    buckets.PushBack("normal");
-    buckets.PushBack("hard");
-    outcomes.PushBack("won");
-    outcomes.PushBack("lost");
-    outcomes.PushBack("drawn");
-    for (i = 0; i < buckets.Size(); i += 1)
-    {
-        for (j = 0; j < outcomes.Size(); j += 1)
-        {
-            packet.SetMemberFlashInt("stats_" + buckets[i] + "_" + outcomes[j], GwaiStatsCount(buckets[i] + "_" + outcomes[j]));
-        }
-    }
-    for (j = 0; j < outcomes.Size(); j += 1)
-    {
-        packet.SetMemberFlashInt("stats_deck_" + outcomes[j], GwaiStatsCount("vs_" + deckName + "_" + outcomes[j]));
-    }
 }
 
 function GwaiSettingsSignal() : bool
@@ -410,7 +366,7 @@ function OnConfigUI()
         enabled = enabled && gwintManager.gwaiDevAI == 2;
     }
     deckName = "";
-    if (practice || GwaiSettingsToggleOn("GwaiStory") || GwaiLabToggleOn("GwaiStats") || GwaiSettingsToggleOn("GwaiTrace"))
+    if (practice || GwaiSettingsToggleOn("GwaiTrace"))
     {
         deck = gwintManager.GetCurrentAIDeck();
         deckName = NameToString(deck.deckName);
@@ -425,18 +381,7 @@ function OnConfigUI()
     packet.SetMemberFlashInt("practiceDeckDifficulty", FactsQueryLatestValue('gwent_difficulty'));
     packet.SetMemberFlashBool("signal", GwaiSettingsSignal());
     packet.SetMemberFlashBool("trace", GwaiSettingsToggleOn("GwaiTrace"));
-    packet.SetMemberFlashBool("coach", GwaiSettingsToggleOn("GwaiCoach"));
-    packet.SetMemberFlashBool("story", !practice && GwaiSettingsToggleOn("GwaiStory"));
-    packet.SetMemberFlashBool("lab", GwaiSettingsToggleOn("GwaiLab"));
-    packet.SetMemberFlashBool("meter", GwaiSettingsToggleOn("GwaiMeter"));
-    packet.SetMemberFlashBool("postGame", GwaiSettingsToggleOn("GwaiPostGame"));
-    packet.SetMemberFlashBool("blunder", GwaiSettingsToggleOn("GwaiBlunder"));
-    packet.SetMemberFlashBool("stats", GwaiSettingsToggleOn("GwaiStats"));
     packet.SetMemberFlashString("opponentDeck", deckName);
-    if (GwaiLabToggleOn("GwaiStats"))
-    {
-        GwaiStatsSend(packet, deckName);
-    }
     m_flashValueStorage.SetFlashObject("gwai.mod.settings", packet);
 }
 
@@ -496,10 +441,6 @@ function GwaiCurrentConfigurationText(separator : string) : string
         text += separator + "AI: Stock game AI";
     }
     text += separator + "Gwent difficulty: " + GwaiDifficultyLabel(GwaiGwentDifficulty()) + " (game setting)";
-    if (GwaiSettingsToggleOn("GwaiStory"))
-    {
-        text += separator + "Stronger story opponents enabled";
-    }
     return text;
 }
 
@@ -568,7 +509,7 @@ function GwaiDiagnosticsArchive() : void
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "history_next", IntToString((next + 1) % 8));
 }
 
-// Always collect integration failures, even when visual signals or Lab mode are off.
+// Always collect integration failures, even when visual signals are off.
 @addMethod(CR4GwintGameMenu) event OnW3GwentAIDiagnostic(kind : string, detail : string)
 {
     var cfg : CInGameConfigWrapper = theGame.GetInGameConfigWrapper();
@@ -595,34 +536,6 @@ function GwaiDiagnosticsArchive() : void
     {
         theGame.SaveUserSettings();
     }
-}
-
-// The Flash screen reports finished matches here; each event writes one value of user.settings.
-@addMethod(CR4GwintGameMenu) event OnW3GwentFunStat(key : string)
-{
-    var config : CInGameConfigWrapper = theGame.GetInGameConfigWrapper();
-    var count : int;
-    if (!GwaiLabToggleOn("GwaiStats"))
-    {
-        return false;
-    }
-    count = StringToInt(config.GetRawConfigValueByStr("W3GwentAIStats", key), 0);
-    config.SetRawConfigValueByStr("W3GwentAIStats", key, IntToString(count + 1));
-}
-
-@addMethod(CR4GwintGameMenu) event OnW3GwentFunCard(card : string)
-{
-    theGame.GetInGameConfigWrapper().SetRawConfigValueByStr("W3GwentAIFun", "last_card", card);
-}
-
-@addMethod(CR4GwintGameMenu) event OnW3GwentFunNote(note : string)
-{
-    theGame.GetInGameConfigWrapper().SetRawConfigValueByStr("W3GwentAIFun", "last_match", note);
-}
-
-@addMethod(CR4GwintGameMenu) event OnW3GwentFunSave()
-{
-    theGame.SaveUserSettings();
 }
 
 // BEGIN GENERATED PRACTICE OPPONENTS

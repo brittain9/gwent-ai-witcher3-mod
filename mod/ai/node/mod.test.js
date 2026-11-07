@@ -115,13 +115,12 @@ test("package manifest records the complete three-tier ladder", { skip: !BUILD_M
   for (const [factValue, tier] of [[1, "easy"], [2, "normal"], [3, "hard"]]) {
     const entry = ladder.tiers[tier];
     assert.equal(entry.game_difficulty.fact_value, factValue);
-    assert.equal(entry.selected_by, "the game's Gwent difficulty setting or explicit practice tier");
+    assert.equal(entry.selected_by, "the game's Gwent difficulty setting");
     assert.match(entry.checkpoint_sha256, /^[0-9a-f]{64}$/);
     assert.equal(entry.checkpoint_sha256, build.tier_policies[tier].checkpoint_sha256);
     assert.equal(entry.temperature, build.tier_policies[tier].temperature);
   }
 });
 
-require("./fun.test.js");
 require("./weights.test.js");
 require("./unknown.test.js");

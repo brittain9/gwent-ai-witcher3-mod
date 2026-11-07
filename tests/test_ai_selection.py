@@ -50,8 +50,6 @@ const identities={1:{CHECKPOINT_SHA256:'a'.repeat(64),EXPORT_SHA256:'d'.repeat(6
  3:{CHECKPOINT_SHA256:'c'.repeat(64),EXPORT_SHA256:'f'.repeat(64)}};
 const env={int:x=>Number(x)|0,getTimer:()=>100,CardManager:{PLAYER_2:1,getInstance:()=>manager,log(){}},
  TACTIC_NONE:0,TACTIC_PASS:1,TACTIC_MAXIMIZE_WIN:2,
- GwaiFun:{parseSettings:data=>({storyTier:data.raiseStory?3:0})},
- GwaiFunLogic:{tierFor:(base,story)=>Math.max(base===0?1:base,story)},
  GwaiNetTierConfig:{dataFor:tier=>identities[tier]},
  GwaiNetPolicy:{unknownCards:()=>[],provenance:tier=>identities[tier].CHECKPOINT_SHA256},
  GwaiCapture:{capture(){captures++;return {policyMode:'network',observation:{}}},legalMoves(){return [{kind:'pass'}]}},
@@ -90,8 +88,8 @@ for(const practice of [false,true]) for(const enabled of [false,true]) for(const
 assert.equal(messages.length,0,'debug messages stay opt-in');
 flow.gwaiConfigureSettings({version:1,enabled:true,vanillaDifficulty:2,practiceDeckDifficulty:2,
  practiceDeck:'Lambert',raiseStory:true});
-assert.equal(flow.gwaiTraceSelection().requested_tier,2);assert.equal(flow.gwaiTraceSelection().effective_tier,3);
-assert.equal(flow.gwaiTraceSelection().checkpoint_sha256,identities[3].CHECKPOINT_SHA256);
+assert.equal(flow.gwaiTraceSelection().requested_tier,2);assert.equal(flow.gwaiTraceSelection().effective_tier,2);
+assert.equal(flow.gwaiTraceSelection().checkpoint_sha256,identities[2].CHECKPOINT_SHA256);
 assert.equal(ai.gwaiBegin(),true);const priorCancels=cancels;
 flow._gwaiMatchEnded=true;
 assert.equal(ai.gwaiPump(),true);assert.equal(cancels,priorCancels+1);

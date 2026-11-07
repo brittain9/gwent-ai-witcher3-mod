@@ -53,22 +53,22 @@ for(const [fact,expected] of [[0,1],[1,1],[2,2],[3,3],[4,3],[2,2],[1,1]]) {
                     root.find(f".//Var[@id='{setting}']").get("displayName"), label
                 )
 
-    def test_core_controls_precede_optional_tools_and_troubleshooting(self) -> None:
+    def test_menu_contains_only_play_controls_then_troubleshooting(self):
         for name in (
             "mod/ai/settings/menu/modW3GwentAI.xml",
             "mod/probe-timing/settings/menu/modW3GwentAIProbe.xml",
         ):
             root = ET.parse(ROOT / name).getroot()
-            order = [var.get("id") for var in root.findall("Group/VisibleVars/Var")]
-            self.assertEqual(order[0], "GwaiEnabled")
-            self.assertLess(order.index("GwaiDevStart"), order.index("GwaiCoach"))
-            self.assertLess(order.index("GwaiStats"), order.index("GwaiSignal"))
-            self.assertLess(
-                order.index("GwaiDiagnosticsHeader"), order.index("GwaiDevReport")
-            )
             self.assertEqual(
-                root.find(".//Var[@id='GwaiDiagnosticsHeader']").get("displayType"),
-                "SEPARATOR",
+                [var.get("id") for var in root.findall("Group/VisibleVars/Var")],
+                [
+                    "GwaiEnabled",
+                    "GwaiDevOpponent",
+                    "GwaiDevStart",
+                    "GwaiDevReport",
+                    "GwaiSignal",
+                    "GwaiTrace",
+                ],
             )
 
     def test_one_shot_actions_use_native_buttons_without_preference_values(
@@ -99,7 +99,7 @@ const assert=require('node:assert/strict');const bodies=BODIES;
 for(const raw of ['0','1','2','3','4','-1','','bad']) {
  const values={GwaiSettingsVersion:'3',GwaiEnabled:'false',GwaiSignal:'true',GwaiDevTier:raw,
  GwaiDevAI:'1',GwaiDevOpponent:'5',GwaiTrace:'true',GwaiStory:'true',GwaiCoach:'false'};
- const forbidden=new Set(['GwaiDevTier','GwaiDifficulty','GwaiClockEnabled','GwaiClockScale','GwaiDevAI']);
+ const forbidden=new Set(['GwaiDevTier','GwaiDifficulty','GwaiClockEnabled','GwaiClockScale','GwaiDevAI','GwaiCoach','GwaiStory','GwaiLab','GwaiMeter','GwaiPostGame','GwaiBlunder','GwaiStats']);
  const cfg={GetGroupIdx(){return -1},GetRawConfigValueByStr(g,key){assert.ok(!forbidden.has(key));return values[key]??''},
  SetRawConfigValueByStr(g,key,value){assert.ok(!forbidden.has(key));assert.ok(!['GwaiDevStart','GwaiDevReport'].includes(key),'button actions are not preferences');values[key]=value}};
  const env={theGame:{GetInGameConfigWrapper(){return cfg}},IntToString:String};
