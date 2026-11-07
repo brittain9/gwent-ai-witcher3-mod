@@ -794,7 +794,7 @@ def main(argv: list[str] | None = None, *, root: Path = ROOT) -> int:
         else:
             install(root, game_dir, package)
             print(
-                "Ready. Load a save, open Options > Mods > Gwent: A Worthy Opponent, and enable AI."
+                "Ready. Load a save, open Settings > Mods > Gwent: A Worthy Opponent, and enable AI."
             )
         return 0
     except (SetupError, OSError, ValueError, subprocess.SubprocessError) as exc:

@@ -47,9 +47,6 @@ function GwaiSettingsInitialize() : void
     GwaiSettingsNormalizeOff(cfg, "GwaiPostGame");
     GwaiSettingsNormalizeOff(cfg, "GwaiBlunder");
     GwaiSettingsNormalizeOff(cfg, "GwaiStats");
-    // A launch request is an action, never a persisted auto-start preference.
-    cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiDevStart", "false");
-    cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiDevReport", "false");
     if (cfg.GetRawConfigValueByStr("W3GwentAI", "GwaiDevOpponent") == "")
     {
         cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiDevOpponent", "0");
@@ -203,7 +200,7 @@ function showOptionsPanel() : void
 // Use the game's test-match route, without entering an NPC's quest or wager.
 // The deck builder keeps the player's existing collection and selected deck.
 @wrapMethod(CR4IngameMenu)
-function OnOptionValueChanged(groupId : int, optionName : name, optionValue : string)
+function OnButtonClicked(groupId : int, optionName : name)
 {
     var cfg : CInGameConfigWrapper;
     var manager : CR4GwintManager;
@@ -211,7 +208,7 @@ function OnOptionValueChanged(groupId : int, optionName : name, optionValue : st
     var opponent : name;
     var selection : string;
     var handled : bool;
-    handled = wrappedMethod(groupId, optionName, optionValue);
+    handled = wrappedMethod(groupId, optionName);
     cfg = theGame.GetInGameConfigWrapper();
     if (cfg.GetGroupName(groupId) != 'W3GwentAI')
     {
@@ -219,31 +216,29 @@ function OnOptionValueChanged(groupId : int, optionName : name, optionValue : st
     }
     if (optionName == 'GwaiDevReport')
     {
-        cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiDevReport", "false");
-        if (optionValue == "true" || optionValue == "1")
-        {
-            theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", GwaiVerificationText(), false, UDB_Ok);
-        }
+        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", GwaiVerificationText(), false, UDB_Ok);
         return true;
     }
     if (optionName != 'GwaiDevStart')
     {
         return handled;
     }
-    cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiDevStart", "false");
-    if (optionValue != "true" && optionValue != "1")
-    {
-        return handled;
-    }
     pauseMenu = (CR4CommonIngameMenu)GetRootMenu();
-    if (isMainMenu || !thePlayer || !pauseMenu || thePlayer.IsInCombat() || theGame.IsDialogOrCutscenePlaying())
+    if (isMainMenu || !thePlayer || !pauseMenu)
     {
-        return handled;
+        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", "Load a saved game, then open Settings > Mods to start a practice match.", false, UDB_Ok);
+        return true;
+    }
+    if (thePlayer.IsInCombat() || theGame.IsDialogOrCutscenePlaying())
+    {
+        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", "Finish combat or dialogue before starting a practice match.", false, UDB_Ok);
+        return true;
     }
     manager = theGame.GetGwintManager();
     if (manager.gameRequested || manager.testMatch || manager.gwaiDevActive)
     {
-        return handled;
+        theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", "A Gwent match is already opening or active.", false, UDB_Ok);
+        return true;
     }
     selection = cfg.GetRawConfigValueByStr("W3GwentAI", "GwaiDevOpponent");
     opponent = GwaiPracticeOpponent(StringToInt(selection, 0) + 1);
@@ -436,39 +431,87 @@ function GwaiDifficultyLabel(tier : int) : string
     return "Hard";
 }
 
-function GwaiVerificationText() : string
+function GwaiCurrentConfigurationText(separator : string) : string
+{
+    var text : string = "Current configuration";
+    if (GwaiSettingsEnabled())
+    {
+        text += separator + "AI: Trained network";
+    }
+    else
+    {
+        text += separator + "AI: Stock game AI";
+    }
+    text += separator + "Practice difficulty: " + GwaiDifficultyLabel(GwaiPracticeTier());
+    text += separator + "Story difficulty: the game's Gwent setting";
+    if (GwaiSettingsToggleOn("GwaiStory"))
+    {
+        text += " (stronger story opponents enabled)";
+    }
+    return text;
+}
+
+function GwaiReportValue(value : string, richText : bool) : string
+{
+    if (richText)
+    {
+        value = StrReplaceAll(value, "&", "&amp;");
+        value = StrReplaceAll(value, "<", "&lt;");
+        value = StrReplaceAll(value, ">", "&gt;");
+    }
+    return value;
+}
+
+function GwaiLatestMatchText(separator : string, richText : bool) : string
 {
     var cfg : CInGameConfigWrapper = theGame.GetInGameConfigWrapper();
     var network : int = StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "network"), 0);
     var stock : int = StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "stock"), 0);
     var vanilla : int = StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "vanilla"), 0);
     var greedy : int = StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "greedy"), 0);
-    var selected : string = "Stock game AI";
-    var status : string = "No network move recorded";
+    var buildID : string = cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "build");
+    var enabled : string = cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "enabled");
+    var opponent : string = cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "opponent");
+    var mode : string = cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "match_mode");
+    var selected : string = "Not recorded";
+    var status : string = "No decisions recorded yet";
     var error : string = cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "first_error");
-    var text : string;
-    if (cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "enabled") == "true")
+    var text : string = "Latest recorded match";
+    if (buildID == "")
+    {
+        return text + separator + "No match recorded yet.";
+    }
+    if (enabled == "false") { selected = "Stock game AI"; }
+    if (enabled == "true")
     {
         selected = "Trained AI (" + GwaiDifficultyLabel(StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "policy_tier"), 3)) + ")";
     }
     if (stock > 0 && network == 0 && vanilla == 0 && greedy == 0) { status = "Stock AI only"; }
+    if (network == 0 && (vanilla > 0 || greedy > 0)) { status = "Fallback AI used; no network choice recorded"; }
     if (network > 0) { status = "Network used"; }
     if (network > 0 && (vanilla > 0 || greedy > 0)) { status = "Network used, with fallbacks"; }
-    if (network + stock + vanilla + greedy == 0) { status = "No decisions recorded yet"; }
-    text = status + "\nRequested: " + selected;
-    text += "\nMatch: " + cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "match_mode");
-    text += "\nOpponent: " + cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "opponent");
-    text += "\nNetwork choices: " + IntToString(network) + "; selected stock: " + IntToString(stock);
-    text += "\nVanilla fallbacks: " + IntToString(vanilla) + "; simple-policy fallbacks: " + IntToString(greedy);
-    if (error != "") { text += "\nFirst error: " + StrLeft(error, 220); }
+    if (opponent == "") { opponent = "Not recorded"; }
+    if (mode == "") { mode = "Not recorded"; }
+    text += separator + status;
+    text += separator + "Requested AI: " + selected;
+    text += separator + "Match: " + GwaiReportValue(mode, richText) + "; Opponent: " + GwaiReportValue(opponent, richText);
+    text += separator + "Network choices: " + IntToString(network) + "; selected stock: " + IntToString(stock);
+    text += separator + "Vanilla fallbacks: " + IntToString(vanilla) + "; simple-policy fallbacks: " + IntToString(greedy);
+    text += separator + "Build: " + GwaiReportValue(buildID, richText);
+    if (error != "") { text += separator + "First error: " + GwaiReportValue(StrLeft(error, 220), richText); }
     return text;
+}
+
+function GwaiVerificationText() : string
+{
+    return GwaiCurrentConfigurationText("<br>") + "<br><br>" + GwaiLatestMatchText("<br>", true);
 }
 
 function GwaiDiagnosticsArchive() : void
 {
     var cfg : CInGameConfigWrapper = theGame.GetInGameConfigWrapper();
     var next : int = StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "history_next"), 0) % 8;
-    var summary : string = StrReplaceAll(StrReplaceAll(GwaiVerificationText(), "\r", " "), "\n", " | ");
+    var summary : string = GwaiLatestMatchText(" | ", false);
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "history_" + IntToString(next), summary);
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "history_next", IntToString((next + 1) % 8));
 }

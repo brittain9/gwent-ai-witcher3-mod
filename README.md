@@ -18,7 +18,7 @@ the game's Gwent screen. It needs no server or AI subscription.
    and close the game and REDlauncher.
 3. On **Windows**, open `Install.cmd`. On **Linux**, run `sh Install.sh`.
    Select the game folder containing `bin` and `content` when asked.
-4. Start the game, load a save, and open **Options > Mods > Gwent: A Worthy Opponent**.
+4. Start the game, load a save, and open **Settings > Mods > Gwent: A Worthy Opponent**.
    Turn on **Enable AI**.
 
 First setup downloads verified build tools when needed and creates the mod
@@ -62,8 +62,8 @@ Your collection and the NPC's native deck still affect each match.
 
 ## Diagnose a problem
 
-**Show AI status (current / latest match)** reports the requested selection and recorded decision
-sources. **Show decision source** displays network and fallback messages.
+**Show AI status (current / latest match)** separates current settings from the
+latest recorded match and its decision sources. **Show decision source** displays network and fallback messages.
 **Record public play-by-play** saves public actions, settled boards and match results
 locally, including the selected tier and model identity in new traces.
 

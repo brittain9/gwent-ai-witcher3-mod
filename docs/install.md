@@ -51,7 +51,7 @@ installing. `--prepare-only` prepares a package without changing the game.
 
 On first launch, retain any script compilation error and close the game if
 compilation fails. Load a save and open
-**Options > Mods > Gwent: A Worthy Opponent**.
+**Settings > Mods > Gwent: A Worthy Opponent**.
 
 ## Controls
 
@@ -61,7 +61,7 @@ compilation fails. Load a save and open
 | Gameplay > Gwent difficulty | Chooses native NPC deck level and story policy; Medium corresponds to the game's middle setting |
 | Practice opponent | Chooses the native opponent collection for practice |
 | Practice AI difficulty | Easy, Medium or Hard, independently of native deck level |
-| Start practice match | Opens deck selection from a loaded game's pause menu, outside combat and dialogue |
+| Start practice match | Button that opens deck selection from a loaded game's pause menu, outside combat and dialogue |
 | Stronger story opponents | Optional minimum policy tiers for named/tournament and generic opponents; never lowers the selected tier |
 
 Practice uses your current collection and restores its temporary manager,
@@ -77,8 +77,8 @@ loading, computation, game animations and banners still take real time.
 
 Open the troubleshooting group at the end of the mod menu:
 
-- **Show AI status (current / latest match)** identifies the requested selection and observed
-  source counts, even when banners are off.
+- **Show AI status (current / latest match)** opens a report with current settings
+  and the latest recorded match, including source counts even when banners are off.
 - **Show decision source** displays `network`, `greedy-fallback` or a stock
   handoff. A fallback means the trained policy did not complete that decision.
 - **Record public play-by-play** saves public events locally. New records include

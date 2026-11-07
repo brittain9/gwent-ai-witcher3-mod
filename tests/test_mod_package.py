@@ -377,7 +377,7 @@ class WitcherScriptDeclarationTests(unittest.TestCase):
         # WitcherScript events implicitly return Bool. A function wrapping an
         # event inherits that signature even when its declaration omits it.
         # The actual compiler rejected bare returns in these callbacks.
-        event_wrappers = {"OnConfigUI", "OnClosingMenu", "OnOptionValueChanged"}
+        event_wrappers = {"OnConfigUI", "OnClosingMenu", "OnButtonClicked"}
         root = Path(__file__).resolve().parents[1] / "mod"
         for script in root.rglob("*.ws"):
             source = script.read_text(encoding="utf-8")

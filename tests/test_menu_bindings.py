@@ -112,6 +112,19 @@ for(const [raw,expected] of [['0',1],['1',2],['2',3],['3',3],['4',3],['-1',3],['
                 "SEPARATOR",
             )
 
+    def test_one_shot_actions_use_native_buttons_without_preference_values(
+        self,
+    ) -> None:
+        for name in (
+            "mod/ai/settings/menu/modW3GwentAI.xml",
+            "mod/probe-timing/settings/menu/modW3GwentAIProbe.xml",
+        ):
+            root = ET.parse(ROOT / name).getroot()
+            for action in ("GwaiDevStart", "GwaiDevReport"):
+                var = root.find(f".//Var[@id='{action}']")
+                self.assertEqual(var.get("displayType"), "BUTTON")
+                self.assertIsNone(var.find("OptionsArray"))
+
     @unittest.skipUnless(shutil.which("node"), "Node is required for menu naming")
     def test_native_menu_branding_changes_only_the_mods_own_group(self) -> None:
         bodies = {
@@ -168,7 +181,7 @@ for(const raw of ['0','1','2','3','4','-1','','bad']) {
  GwaiDevAI:'1',GwaiDevOpponent:'5',GwaiTrace:'true',GwaiStory:'true',GwaiCoach:'false'};
  const forbidden=new Set(['GwaiDifficulty','GwaiClockEnabled','GwaiClockScale','GwaiDevAI']);
  const cfg={GetGroupIdx(){return -1},GetRawConfigValueByStr(g,key){assert.ok(!forbidden.has(key));return values[key]??''},
- SetRawConfigValueByStr(g,key,value){assert.ok(!forbidden.has(key));values[key]=value}};
+ SetRawConfigValueByStr(g,key,value){assert.ok(!forbidden.has(key));assert.ok(!['GwaiDevStart','GwaiDevReport'].includes(key),'button actions are not preferences');values[key]=value}};
  const env={theGame:{GetInGameConfigWrapper(){return cfg}},IntToString:String};
  env.GwaiSettingsNormalizeOff=(cfg,id)=>new Function('env','cfg','id','with(env){'+bodies.GwaiSettingsNormalizeOff+'}')(env,cfg,id);
  new Function('env','with(env){'+bodies.GwaiSettingsInitialize+'}')(env);

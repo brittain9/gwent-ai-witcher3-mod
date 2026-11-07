@@ -138,7 +138,7 @@
                     </Option>
                 </OptionsArray>
             </Var>
-            <Var id="GwaiDevStart" displayName="Start practice match (loaded game only)" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiDevStart" displayName="Start practice match (loaded game only)" displayType="BUTTON" tags="nonLocalizedName" />
             <Var id="GwaiAssistanceHeader" displayName="Optional assistance" displayType="SEPARATOR" tags="nonLocalizedName" />
             <Var id="GwaiCoach" displayName="Coach hint on your turn" displayType="TOGGLE" tags="nonLocalizedName" />
             <Var id="GwaiStory" displayName="Stronger story opponents" displayType="TOGGLE" tags="nonLocalizedName" />
@@ -149,7 +149,7 @@
             <Var id="GwaiBlunder" displayName="Blunder alert" displayType="TOGGLE" tags="indent;nonLocalizedName" />
             <Var id="GwaiStats" displayName="Match stats" displayType="TOGGLE" tags="indent;nonLocalizedName" />
             <Var id="GwaiDiagnosticsHeader" displayName="Troubleshooting" displayType="SEPARATOR" tags="nonLocalizedName" />
-            <Var id="GwaiDevReport" displayName="Show AI status (current / latest match)" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiDevReport" displayName="Show AI status (current / latest match)" displayType="BUTTON" tags="nonLocalizedName" />
             <Var id="GwaiSignal" displayName="Show decision source" displayType="TOGGLE" tags="nonLocalizedName" />
             <Var id="GwaiTrace" displayName="Record public play-by-play" displayType="TOGGLE" tags="nonLocalizedName" />
         </VisibleVars>

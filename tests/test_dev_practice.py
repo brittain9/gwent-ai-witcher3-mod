@@ -31,7 +31,7 @@ class DevPracticeTests(unittest.TestCase):
         bodies = {
             name: javascript_body(name)
             for name in (
-                "OnOptionValueChanged",
+                "OnButtonClicked",
                 "GwaiDevBegin",
                 "GwaiDevRestore",
                 "GwaiPracticeAI",
@@ -53,7 +53,7 @@ const assert = require('node:assert/strict');
 const bodies = BODIES;
 function run(name, env) { return new Function('env', 'with(env){' + bodies[name] + '}')(env); }
 function fixture(overrides = {}) {
-    const events = [], values = { GwaiDevOpponent: '0', GwaiDevTier: '2', GwaiEnabled: 'true' };
+    const events = [], dialogs = [], values = { GwaiDevOpponent: '0', GwaiDevTier: '2', GwaiEnabled: 'true' };
     const m = { gameRequested: false, testMatch: false, gwaiDevActive: false,
         gwaiDevOldExtra: [], selectedEnemyDeck: 'Thaler', tutorial: false,
         deckTutorial: false, doubleAI: true, faction: 3, extra: ['bonus'], gwaiDevAI: 0, gwaiDevTier: 0, gwaiDevLabel: '',
@@ -75,10 +75,10 @@ function fixture(overrides = {}) {
         get() { return this.savedExtra; },
         set(v) { this.savedExtra = v.slice(); this.savedExtra.Clear = function() { this.length = 0; }; }
     });
-    const cfg = { GetGroupName() { return 'W3GwentAI'; },
-        GetRawConfigValueByStr(g, k) { assert.notEqual(k,'GwaiDevAI','removed policy preference must never be read');return values[k] || ''; },
-        SetRawConfigValueByStr(g, k, v) { values[k] = v; } };
-    const env = { groupId: 1, optionName: 'GwaiDevStart', optionValue: 'true',
+    const cfg = { GetGroupName(groupId) { return groupId===1?'W3GwentAI':'Gameplay'; },
+        GetRawConfigValueByStr(g, k) { assert.ok(!['GwaiDevAI','GwaiDevStart','GwaiDevReport'].includes(k),'removed preferences must never be read');return values[k] || ''; },
+        SetRawConfigValueByStr(g, k, v) { assert.ok(!['GwaiDevStart','GwaiDevReport'].includes(k),'buttons do not write preferences');values[k] = v; } };
+    const env = { groupId: 1, optionName: 'GwaiDevStart', UDB_Ok:'OK',
         StringToInt: (s, d) => { const n = Number.parseInt(s, 10); return Number.isNaN(n) ? d : n; }, gwintManager: m,
         GwaiDiagnosticsArchive() {},
         OnW3GwentPlayTraceEnd(reason) { assert.equal(reason, 'interrupted'); },
@@ -91,7 +91,7 @@ function fixture(overrides = {}) {
             SetGwintMinigameState(v) { this.state = v; } },
         theGame: { GetInGameConfigWrapper() { return cfg; },
             SaveUserSettings() {},
-            GetGwintManager() { return m; }, IsDialogOrCutscenePlaying() { return false; },
+            GetGwintManager() { return m; }, GetGuiManager(){return {ShowUserDialogAdv(...args){dialogs.push(args)}}}, IsDialogOrCutscenePlaying() { return false; },
             RequestMenu(v) { events.push(v); } }, ...overrides };
     const managerEnv = new Proxy(env, {
         has(t, k) { return k in m || k in t; },
@@ -105,13 +105,13 @@ function fixture(overrides = {}) {
     env.GwaiPracticeTier = () => run('GwaiPracticeTier', env);
     env.GwaiPracticeOpponent = id => run('GwaiPracticeOpponent', { ...env, id });
     env.GwaiPracticeOpponentLabel = id => run('GwaiPracticeOpponentLabel', { ...env, id });
-    return { env, m, cfg, values, events };
+    return { env, m, cfg, values, events, dialogs };
 }
 for (const [selection, deck] of [['0','NKHard'],['1','NilfHard'],['2','ScoiaHard'],['3','NMLHard'],['4','SkelHard'],['32','ScoiaTournament']]) {
     const f = fixture(); f.values.GwaiDevOpponent = selection;
-    assert.equal(run('OnOptionValueChanged', f.env), true);
+    assert.equal(run('OnButtonClicked', f.env), true);
     assert.equal(f.m.selectedEnemyDeck, deck);
-    assert.equal(f.values.GwaiDevStart, 'false');
+    assert.equal(Object.hasOwn(f.values,'GwaiDevStart'),false);
     assert.equal(f.m.gameRequested, true);
     assert.equal(f.m.testMatch, true);
     assert.deepEqual(f.events, ['wrapped', 'close', 'DeckBuilder']);
@@ -123,7 +123,7 @@ for (const [selection, deck] of [['0','NKHard'],['1','NilfHard'],['2','ScoiaHard
     assert.deepEqual(f.m.extra, ['bonus']); assert.equal(f.m.faction, 3);
     assert.equal(f.m.doubleAI, true); assert.equal(f.m.gwaiDevActive, false);
 }
-for (const block of ['main','player','root','combat','dialog','pending','testMatch','active','off','other']) {
+for (const block of ['main','player','root','combat','dialog','pending','testMatch','active','other','otherGroup']) {
     const f = fixture();
     if (block === 'main') f.env.isMainMenu = true;
     if (block === 'player') f.env.thePlayer = null;
@@ -133,14 +133,17 @@ for (const block of ['main','player','root','combat','dialog','pending','testMat
     if (block === 'pending') f.m.gameRequested = true;
     if (block === 'testMatch') f.m.testMatch = true;
     if (block === 'active') f.m.gwaiDevActive = true;
-    if (block === 'off') f.env.optionValue = 'false';
+    if (block === 'otherGroup') f.env.groupId = 2;
     if (block === 'other') f.env.optionName = 'GwaiEnabled';
-    run('OnOptionValueChanged', f.env);
+    run('OnButtonClicked', f.env);
     assert.deepEqual(f.events, ['wrapped'], block);
     assert.equal(f.m.selectedEnemyDeck, 'Thaler', block);
+    assert.equal(f.dialogs.length,['other','otherGroup'].includes(block)?0:1,block);
+    if(['main','player','root'].includes(block)) assert.ok(f.dialogs[0][2].includes('Load a saved game'),block);
+    assert.equal(Object.hasOwn(f.values,'GwaiDevStart'),false);
 }
 for (const starting of [false, true]) {
-    const f = fixture(); run('OnOptionValueChanged', f.env);
+    const f = fixture(); run('OnButtonClicked', f.env);
     f.m.gameRequested = starting;
     f.env.wrappedMethod = () => { f.env.thePlayer.state = 99; f.m.gameRequested = false; };
     run('deckClose', f.env);
@@ -152,11 +155,11 @@ assert.equal(f.env.thePlayer.state, 7); // Closing a normal match does no restor
 for (const handled of [false, true]) {
     const f = fixture(); f.env.optionName = 'GwaiEnabled';
     f.env.wrappedMethod = () => handled;
-    assert.equal(run('OnOptionValueChanged', f.env), handled);
+    assert.equal(run('OnButtonClicked', f.env), handled);
 }
 for(const enabled of [false,true]) for(const [tierIndex,tier] of [[0,1],[1,2],[2,3]]) {
     const f = fixture();f.values.GwaiEnabled=String(enabled);f.values.GwaiDevTier=String(tierIndex);
-    run('OnOptionValueChanged', f.env);
+    run('OnButtonClicked', f.env);
     assert.equal(f.m.gwaiDevAI,enabled?2:1);
     assert.equal(f.m.gwaiDevTier,tier);
     const packet = {}, storage = {
@@ -195,7 +198,7 @@ for(const enabled of [false,true]) for(const [tierIndex,tier] of [[0,1],[1,2],[2
         ['true','1','1',2,2,'NilfHard']
     ]) {
         Object.assign(f.values,{GwaiEnabled:enabled,GwaiDevTier:tierIndex,GwaiDevOpponent:opponent});
-        assert.equal(run('OnOptionValueChanged',f.env),true);
+        assert.equal(run('OnButtonClicked',f.env),true);
         assert.equal(f.m.gwaiDevAI,mode);assert.equal(f.m.gwaiDevTier,tier);
         assert.equal(f.m.selectedEnemyDeck,deck);
         f.m.GwaiDevRestore();
@@ -207,11 +210,11 @@ for(const enabled of [false,true]) for(const [tierIndex,tier] of [[0,1],[1,2],[2
     const f = fixture(), dialogs = [];
     f.env.optionName = 'GwaiDevReport';
     f.env.UDB_Ok = 'OK';
-    f.env.GwaiVerificationText = () => 'Network choices: 12; vanilla fallbacks: 0';
+    f.env.GwaiVerificationText = () => 'Current configuration<br>Latest recorded match';
     f.env.theGame.GetGuiManager = () => ({ ShowUserDialogAdv(...args) { dialogs.push(args); } });
-    assert.equal(run('OnOptionValueChanged', f.env), true);
-    assert.deepEqual(dialogs[0], [0, 'Gwent: A Worthy Opponent', 'Network choices: 12; vanilla fallbacks: 0', false, 'OK']);
-    assert.equal(f.values.GwaiDevReport, 'false');
+    assert.equal(run('OnButtonClicked', f.env), true);
+    assert.deepEqual(dialogs[0], [0, 'Gwent: A Worthy Opponent', 'Current configuration<br>Latest recorded match', false, 'OK']);
+    assert.equal(Object.hasOwn(f.values,'GwaiDevReport'),false);
     assert.equal(f.m.gameRequested, false);
     assert.deepEqual(f.events, ['wrapped']);
 }

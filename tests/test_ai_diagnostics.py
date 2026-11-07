@@ -107,6 +107,9 @@ assert.ok(reads.every(key=>!key.startsWith('impossible')));
             "sink": js_body(settings, "OnW3GwentAIDiagnostic"),
             "verification": js_body(settings, "GwaiVerificationText"),
             "difficulty": js_body(settings, "GwaiDifficultyLabel"),
+            "configuration": js_body(settings, "GwaiCurrentConfigurationText"),
+            "latest": js_body(settings, "GwaiLatestMatchText"),
+            "value": js_body(settings, "GwaiReportValue"),
             "archive": js_body(settings, "GwaiDiagnosticsArchive"),
         }
         harness = r"""
@@ -184,19 +187,24 @@ flow._gwaiSettings.practice = true;
 flow.mcMessageQueue.PushMessage = () => { throw new Error('banner failed'); };
 new Function('env', 'with(env){' + bodies.stock + '}').call(flow, env);
 assert.equal(saved.stock, '3'); // Optional UI cannot interrupt the stock decision path.
-Object.assign(saved, { practice: '2', enabled:'true', policy_tier: '3', opponent: 'Scoia tournament' });
+Object.assign(saved, { build:'0.1.0',practice: '2', enabled:'true', policy_tier: '3', opponent: 'Scoia tournament' });
 const reportEnv = { ...sinkEnv };
 reportEnv.GwaiDifficultyLabel = tier=>new Function('tier',bodies.difficulty)(tier);
+reportEnv.GwaiSettingsEnabled=()=>true;reportEnv.GwaiPracticeTier=()=>3;reportEnv.GwaiSettingsToggleOn=()=>false;
+reportEnv.GwaiReportValue=(value,richText)=>new Function('env','value','richText','with(env){'+bodies.value+'}')(reportEnv,value,richText);
+reportEnv.GwaiCurrentConfigurationText=separator=>new Function('env','separator','with(env){'+bodies.configuration+'}')(reportEnv,separator);
+reportEnv.GwaiLatestMatchText=(separator,richText)=>new Function('env','separator','richText','with(env){'+bodies.latest+'}')(reportEnv,separator,richText);
 function verification() { return new Function('env', 'with(env){' + bodies.verification + '}')(reportEnv); }
 reportEnv.GwaiVerificationText = verification;
 const report = verification();
-assert.ok(report.startsWith('Network used, with fallbacks'));
-assert.ok(report.includes('Requested: Trained AI (Hard)'));
+assert.ok(report.startsWith('Current configuration'));
+assert.ok(report.includes('Network used, with fallbacks'));
+assert.ok(report.includes('Requested AI: Trained AI (Hard)'));
 assert.ok(report.includes('Network choices: 1; selected stock: 3'));
 assert.ok(report.includes('First error: capture failed: TypeError bad  value'));
 for(const [tier,label] of [['1','Easy'],['2','Medium'],['3','Hard']]) {
     saved.policy_tier=tier;
-    assert.ok(verification().includes('Requested: Trained AI ('+label+')'));
+    assert.ok(verification().includes('Requested AI: Trained AI ('+label+')'));
 }
 for (let i = 0; i < 10; i++) {
     new Function('env', 'with(env){' + bodies.archive + '}')(reportEnv);
@@ -204,15 +212,76 @@ for (let i = 0; i < 10; i++) {
 assert.equal(saved.history_next, '2');
 assert.equal(Object.keys(saved).filter(k => /^history_\d+$/.test(k)).length, 8);
 assert.ok(!saved.history_0.includes('\n') && !saved.history_0.includes('\r'));
+assert.ok(saved.history_0.startsWith('Latest recorded match | '));
+assert.ok(!saved.history_0.includes('<br>'));assert.ok(!saved.history_0.includes('Current configuration'));
 Object.assign(saved, { network: '0', stock: '22', vanilla: '0', greedy: '0', practice: '1', enabled:'false', first_error: '' });
-assert.ok(verification().startsWith('Stock AI only'));
-assert.ok(verification().includes('Requested: Stock game AI'));
+assert.ok(verification().includes('Stock AI only'));
+assert.ok(verification().includes('Requested AI: Stock game AI'));
 Object.assign(saved, { stock: '0', vanilla: '3', practice: '2' });
-assert.ok(verification().startsWith('No network move recorded'));
+assert.ok(verification().includes('Fallback AI used; no network choice recorded'));
 """.replace("BODIES", json.dumps(bodies))
         result = subprocess.run(
             ["node", "-e", harness], capture_output=True, text=True, check=False
         )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_status_separates_current_settings_from_recorded_match_and_escapes_markup(
+        self,
+    ) -> None:
+        source = (ROOT / "mod/ai/settings/scripts/local/gwai_settings.ws").read_text()
+        bodies = {
+            name: js_body(source, name)
+            for name in (
+                "GwaiVerificationText",
+                "GwaiCurrentConfigurationText",
+                "GwaiLatestMatchText",
+                "GwaiReportValue",
+                "GwaiDifficultyLabel",
+                "GwaiSettingsEnabled",
+                "GwaiPracticeTier",
+                "GwaiSettingsToggleOn",
+                "GwaiDiagnosticsArchive",
+            )
+        }
+        harness = r"""
+const assert=require('node:assert/strict');const bodies=BODIES;
+const sections={W3GwentAI:{GwaiEnabled:'true',GwaiDevTier:'1',GwaiStory:'false'},W3GwentAIDiagnostics:{}};
+const cfg={GetRawConfigValueByStr(group,key){return sections[group]?.[key]??''},
+SetRawConfigValueByStr(group,key,value){sections[group][key]=value}};
+const env={theGame:{GetInGameConfigWrapper(){return cfg}},IntToString:String,
+StringToInt(s,fallback){const n=Number.parseInt(s,10);return Number.isNaN(n)?fallback:n},
+StrLeft:(s,n)=>s.slice(0,n),StrReplaceAll:(s,a,b)=>s.split(a).join(b)};
+function run(name,args={}){return new Function('env','with(env){'+bodies[name]+'}')({...env,...args})}
+env.GwaiDifficultyLabel=tier=>run('GwaiDifficultyLabel',{tier});
+env.GwaiSettingsEnabled=()=>run('GwaiSettingsEnabled');env.GwaiPracticeTier=()=>run('GwaiPracticeTier');
+env.GwaiSettingsToggleOn=id=>run('GwaiSettingsToggleOn',{id});
+env.GwaiReportValue=(value,richText)=>run('GwaiReportValue',{value,richText});
+env.GwaiCurrentConfigurationText=separator=>run('GwaiCurrentConfigurationText',{separator});
+env.GwaiLatestMatchText=(separator,richText)=>run('GwaiLatestMatchText',{separator,richText});
+let report=run('GwaiVerificationText');
+assert.ok(report.includes('Current configuration<br>AI: Trained network'));
+assert.ok(report.includes('Practice difficulty: Medium'));
+assert.ok(report.includes('Latest recorded match<br>No match recorded yet.'));
+assert.ok(!report.includes('Stock game AI'));assert.ok(!report.includes('Opponent:'));
+assert.ok(!report.includes('\\n'));
+Object.assign(sections.W3GwentAIDiagnostics,{build:'0.1.0',enabled:'false',policy_tier:'1',match_mode:'story',
+opponent:'<font color="red">Lambert & friends</font>',network:'0',stock:'3',vanilla:'1',greedy:'0',first_error:'bad <tag> & input'});
+report=run('GwaiVerificationText');
+assert.ok(report.includes('AI: Trained network'));assert.ok(report.includes('Requested AI: Stock game AI'));
+assert.ok(report.includes('&lt;font color="red"&gt;Lambert &amp; friends&lt;/font&gt;'));
+assert.ok(report.includes('First error: bad &lt;tag&gt; &amp; input'));assert.ok(!report.includes('<font'));
+run('GwaiDiagnosticsArchive');
+const archived=sections.W3GwentAIDiagnostics.history_0;
+assert.ok(archived.includes('Lambert & friends'));assert.ok(archived.includes('bad <tag> & input'));
+assert.ok(!archived.includes('<br>'));assert.ok(!archived.includes('&lt;'));assert.ok(!archived.includes('Current configuration'));
+sections.W3GwentAI.GwaiEnabled='false';
+Object.assign(sections.W3GwentAIDiagnostics,{enabled:'true',policy_tier:'3',match_mode:'practice',network:'4',stock:'0',vanilla:'0',opponent:''});
+report=run('GwaiVerificationText');
+assert.ok(report.includes('Current configuration<br>AI: Stock game AI'));
+assert.ok(report.includes('Requested AI: Trained AI (Hard)'));assert.ok(report.includes('Opponent: Not recorded'));
+assert.ok(report.includes('Network used'));
+""".replace("BODIES", json.dumps(bodies))
+        result = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
