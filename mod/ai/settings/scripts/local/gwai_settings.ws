@@ -191,7 +191,7 @@ function GwaiNameOptions(entries : CScriptedFlashArray, groupID : int) : void
 }
 
 @wrapMethod(CR4IngameMenu)
-protected function showOptionsPanel() : void
+function showOptionsPanel() : void
 {
     var entries : CScriptedFlashArray;
     wrappedMethod();
