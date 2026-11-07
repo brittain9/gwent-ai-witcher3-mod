@@ -18,7 +18,7 @@ def js_body(source: str, name: str) -> str:
         name,
     )
     return re.sub(
-        r"\b(\w+)\s*:\s*(String|Boolean|Error|int|string|bool|CInGameConfigWrapper)\b",
+        r"\b(\w+)\s*:\s*(String|Boolean|Error|int|string|bool|CInGameConfigWrapper|SDeckDefinition)\b",
         r"\1",
         body,
     )
@@ -33,18 +33,42 @@ class AIDiagnosticTests(unittest.TestCase):
         body = js_body(source, "GwaiDiagnosticsInitialize")
         harness = r"""
 const assert=require('node:assert/strict');const body=BODY;
-for(const tier of [-1,0,1,2,3,4,99]) {
- const saved={};const manager={gwaiDevTier:tier,gwaiDevAI:2,gwaiDevLabel:'test opponent'};
+for(const enabled of [false,true]) for(const mode of [1,2]) for(const tier of [-1,0,1,2,3,4,99]) {
+ const saved={};const manager={gwaiDevActive:true,gwaiDevTier:tier,gwaiDevAI:mode,gwaiDevLabel:'test opponent',
+ GetCurrentAIDeck(){throw new Error('practice diagnostics already have their requested opponent')}};
+ Object.defineProperty(manager,'selectedEnemyDeck',{get(){throw new Error('native field is private')}});
  const env={theGame:{GetInGameConfigWrapper(){return {SetRawConfigValueByStr(g,k,v){saved[k]=v}}},
- GetGwintManager(){return manager},SaveUserSettings(){}},IntToString:String,FactsQueryLatestValue(){return 2}};
+ GetGwintManager(){return manager},SaveUserSettings(){}},IntToString:String,FactsQueryLatestValue(){return 2},GwaiSettingsEnabled(){return enabled},NameToString:String};
  new Function('env','with(env){'+body+'}')(env);
  assert.equal(saved.policy_tier,String(tier>=1&&tier<=3?tier:3));
- assert.equal(saved.build,'0.1.0-preview');assert.equal(saved.vanilla_difficulty,'2');
+ assert.equal(saved.build,'0.1.0');assert.equal(saved.vanilla_difficulty,'2');
+ assert.equal(saved.enabled,String(enabled&&mode===2));assert.equal(saved.match_mode,'practice');
 }
 """.replace("BODY", json.dumps(body))
         result = subprocess.run(
             ["node", "-e", harness], capture_output=True, text=True, check=False
         )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_story_diagnostics_record_requested_ai_and_native_tier(self) -> None:
+        source = (ROOT / "mod/ai/settings/scripts/local/gwai_settings.ws").read_text()
+        body = js_body(source, "GwaiDiagnosticsInitialize")
+        harness = r"""
+const assert=require('node:assert/strict');const body=BODY;
+for(const enabled of [false,true]) for(const [native,expected] of [[0,1],[1,1],[2,2],[3,3],[4,3]]) {
+ let deckReads=0;const saved={};const manager={gwaiDevActive:false,gwaiDevTier:0,gwaiDevAI:0,gwaiDevLabel:'',
+ GetCurrentAIDeck(){deckReads++;return {deckName:'Lambert'}}};
+ Object.defineProperty(manager,'selectedEnemyDeck',{get(){throw new Error('native field is private')}});
+ const env={theGame:{GetInGameConfigWrapper(){return {SetRawConfigValueByStr(g,k,v){saved[k]=v}}},
+ GetGwintManager(){return manager},SaveUserSettings(){}},IntToString:String,FactsQueryLatestValue(){return native},GwaiSettingsEnabled(){return enabled},NameToString:String};
+ new Function('env','with(env){'+body+'}')(env);
+ assert.equal(saved.policy_tier,String(expected));assert.equal(saved.enabled,String(enabled));
+ assert.equal(saved.match_mode,'story');assert.equal(saved.opponent,'Lambert');
+ assert.equal(deckReads,1);
+ assert.equal(saved.vanilla_difficulty,String(native));
+}
+""".replace("BODY", json.dumps(body))
+        result = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_statistics_packet_contains_stock_and_exactly_three_trained_buckets(
@@ -82,6 +106,7 @@ assert.ok(reads.every(key=>!key.startsWith('impossible')));
             "stock": js_body(FLOW_METHODS, "gwaiNotifyStockTurn"),
             "sink": js_body(settings, "OnW3GwentAIDiagnostic"),
             "verification": js_body(settings, "GwaiVerificationText"),
+            "difficulty": js_body(settings, "GwaiDifficultyLabel"),
             "archive": js_body(settings, "GwaiDiagnosticsArchive"),
         }
         harness = r"""
@@ -153,29 +178,35 @@ assert.equal(saved.vanilla, '2');
 assert.equal(messages.at(-1), 'W3 Gwent AI: stock AI (selected for practice)');
 flow._gwaiSettings.practice = false;
 new Function('env', 'with(env){' + bodies.stock + '}').call(flow, env);
-assert.equal(saved.stock, '1'); // Ordinary stock games are untouched by practice diagnostics.
+assert.equal(saved.stock, '2'); // Story selection is observable as well as practice selection.
+assert.equal(messages.at(-1), 'W3 Gwent AI: stock AI (selected for story)');
 flow._gwaiSettings.practice = true;
 flow.mcMessageQueue.PushMessage = () => { throw new Error('banner failed'); };
 new Function('env', 'with(env){' + bodies.stock + '}').call(flow, env);
-assert.equal(saved.stock, '2'); // Optional UI cannot interrupt the stock decision path.
-Object.assign(saved, { practice: '2', policy_tier: '3', opponent: 'Scoia tournament' });
+assert.equal(saved.stock, '3'); // Optional UI cannot interrupt the stock decision path.
+Object.assign(saved, { practice: '2', enabled:'true', policy_tier: '3', opponent: 'Scoia tournament' });
 const reportEnv = { ...sinkEnv };
+reportEnv.GwaiDifficultyLabel = tier=>new Function('tier',bodies.difficulty)(tier);
 function verification() { return new Function('env', 'with(env){' + bodies.verification + '}')(reportEnv); }
 reportEnv.GwaiVerificationText = verification;
 const report = verification();
 assert.ok(report.startsWith('Network used, with fallbacks'));
-assert.ok(report.includes('Selected: Trained AI, tier 3'));
-assert.ok(report.includes('Network choices: 1; selected stock: 2'));
+assert.ok(report.includes('Requested: Trained AI (Hard)'));
+assert.ok(report.includes('Network choices: 1; selected stock: 3'));
 assert.ok(report.includes('First error: capture failed: TypeError bad  value'));
+for(const [tier,label] of [['1','Easy'],['2','Medium'],['3','Hard']]) {
+    saved.policy_tier=tier;
+    assert.ok(verification().includes('Requested: Trained AI ('+label+')'));
+}
 for (let i = 0; i < 10; i++) {
     new Function('env', 'with(env){' + bodies.archive + '}')(reportEnv);
 }
 assert.equal(saved.history_next, '2');
 assert.equal(Object.keys(saved).filter(k => /^history_\d+$/.test(k)).length, 8);
 assert.ok(!saved.history_0.includes('\n') && !saved.history_0.includes('\r'));
-Object.assign(saved, { network: '0', stock: '22', vanilla: '0', greedy: '0', practice: '1', first_error: '' });
+Object.assign(saved, { network: '0', stock: '22', vanilla: '0', greedy: '0', practice: '1', enabled:'false', first_error: '' });
 assert.ok(verification().startsWith('Stock AI only'));
-assert.ok(verification().includes('Selected: Stock game AI'));
+assert.ok(verification().includes('Requested: Stock game AI'));
 Object.assign(saved, { stock: '0', vanilla: '3', practice: '2' });
 assert.ok(verification().startsWith('No network move recorded'));
 """.replace("BODIES", json.dumps(bodies))

@@ -16,16 +16,17 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from scripts import build_probe, mod_fun, mod_practice, mod_trace
+    from scripts import build_probe, compiled_policy, mod_fun, mod_practice, mod_trace
 except ModuleNotFoundError:
     import build_probe
+    import compiled_policy
     import mod_fun
     import mod_practice
     import mod_trace
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD_ID = "0.1.0-preview"
+BUILD_ID = "0.1.0"
 AS3_DIR = ROOT / "mod/ai/as3"
 OUTPUT_DIR = ROOT / ".runtime/mod-build"
 RECORDER_OUTPUT_DIR = ROOT / ".runtime/mod-build-recorder"
@@ -305,7 +306,7 @@ AI_MEMBERS = r"""      private var _gwaiRunner:Object = null;
 
       private function gwaiReportDecision(profile:int, fallback:Boolean, detail:String) : void
       {
-         var difficulty:String = profile == 1 ? "Easy" : (profile == 2 ? "Normal" : "Hard");
+         var difficulty:String = profile == 1 ? "Easy" : (profile == 2 ? "Medium" : "Hard");
          if(fallback)
          {
             CardManager.log("#W3AI# fallback: " + detail);
@@ -340,7 +341,7 @@ FLOW_METHODS = r"""      private var _gwaiSettings:Object = null;
          }
          var vanillaDifficulty:int = int(data.vanillaDifficulty);
          if(vanillaDifficulty < 0 || vanillaDifficulty > 3) vanillaDifficulty = 2;
-         var signal:Boolean = data.signal == undefined ? true : Boolean(data.signal);
+         var signal:Boolean = data.signal == undefined ? false : Boolean(data.signal);
          var fun:Object = null;
          try
          {
@@ -471,6 +472,20 @@ FLOW_METHODS = r"""      private var _gwaiSettings:Object = null;
          return this.currentRound + 1;
       }
 
+      public function gwaiTraceSelection() : Object
+      {
+         if(this._gwaiSettings == null) return null;
+         var enabled:Boolean = Boolean(this._gwaiSettings.enabled);
+         var tier:int = enabled ? this.gwaiTier() : 0;
+         var data:Object = enabled ? GwaiNetTierConfig.dataFor(tier) : null;
+         return {enabled:enabled,requested_tier:Math.max(1,int(this._gwaiSettings.vanillaDifficulty)),
+            effective_tier:tier,mode:this._gwaiSettings.practice ? "practice" : "story",
+            opponent:String(this._gwaiSettings.practiceDeck),
+            npc_difficulty:Math.max(1,Math.min(3,int(this._gwaiSettings.practiceDeckDifficulty))),
+            checkpoint_sha256:data == null ? "" : String(data.CHECKPOINT_SHA256),
+            weights_sha256:data == null ? "" : String(data.EXPORT_SHA256)};
+      }
+
       public function gwaiNotifyDecision(profile:int, fallback:Boolean, detail:String = "") : void
       {
          this.gwaiRecordDecision(fallback ? "vanilla" : (detail.indexOf("greedy-fallback") >= 0 ? "greedy" : "network"),detail);
@@ -483,7 +498,7 @@ FLOW_METHODS = r"""      private var _gwaiSettings:Object = null;
                this.mcMessageQueue.PushMessage("W3 Gwent AI: fallback (vanilla AI plays this turn)");
             return;
          }
-         var difficulty:String = profile == 1 ? "Easy" : (profile == 2 ? "Normal" : "Hard");
+         var difficulty:String = profile == 1 ? "Easy" : (profile == 2 ? "Medium" : "Hard");
          if(detail.indexOf("network ") >= 0 && this.mcMessageQueue != null)
          {
             this._gwaiSignalShown = true;
@@ -510,12 +525,13 @@ FLOW_METHODS = r"""      private var _gwaiSettings:Object = null;
 
       public function gwaiNotifyStockTurn() : void
       {
-         if(this._gwaiSettings == null || !this._gwaiSettings.practice || this._gwaiSettings.enabled) return;
-         this.gwaiRecordDecision("stock","selected for practice");
+         if(this._gwaiSettings == null || this._gwaiSettings.enabled) return;
+         var mode:String = this._gwaiSettings.practice ? "practice" : "story";
+         this.gwaiRecordDecision("stock","selected for " + mode);
          try
          {
             if(this._gwaiSettings.signal && this.mcMessageQueue != null)
-               this.mcMessageQueue.PushMessage("W3 Gwent AI: stock AI (selected for practice)");
+               this.mcMessageQueue.PushMessage("W3 Gwent AI: stock AI (selected for " + mode + ")");
          }
          catch(stockSignalError:Error) {}
       }
@@ -526,9 +542,9 @@ FLOW_METHODS = r"""      private var _gwaiSettings:Object = null;
          try
          {
             var tier:int = this.gwaiTier();
-            var policy:String = this._gwaiSettings.enabled ? "Trained " + ["Easy","Normal","Hard"][tier - 1] : "Stock game AI";
+            var policy:String = this._gwaiSettings.enabled ? "Trained " + ["Easy","Medium","Hard"][tier - 1] : "Stock game AI";
             var level:int = int(this._gwaiSettings.practiceDeckDifficulty);
-            var deckLevel:String = level == 1 ? "Easy" : (level == 3 ? "Hard" : "Normal");
+            var deckLevel:String = level == 1 ? "Easy" : (level == 3 ? "Hard" : "Medium");
             var manager:CardManager = CardManager.getInstance();
             var faction:String = manager.playerDeckDefinitions[CardManager.PLAYER_2].getFactionNameString();
             this.mcMessageQueue.PushMessage("Practice: " + this._gwaiSettings.practiceOpponent + " | " + faction + " | " + policy + " | NPC deck: " + deckLevel);
@@ -2164,9 +2180,10 @@ def _tier_config_source(
 
 
 def _difficulty_ladder(tier_policies: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    labels = {"easy": "Easy", "normal": "Medium", "hard": "Hard"}
     tiers = {
         tier: {
-            "game_difficulty": {"label": tier.title(), "fact_value": fact_value},
+            "game_difficulty": {"label": labels[tier], "fact_value": fact_value},
             "selected_by": "the game's Gwent difficulty setting or explicit practice tier",
             "checkpoint_sha256": tier_policies[tier]["checkpoint_sha256"],
             "temperature": tier_policies[tier]["temperature"],
@@ -2174,7 +2191,7 @@ def _difficulty_ladder(tier_policies: dict[str, dict[str, Any]]) -> dict[str, An
         for fact_value, tier in enumerate(TIER_NAMES, start=1)
     }
     return {
-        "selection": "Easy, Normal and Hard follow the game's Gwent difficulty; practice can select the policy separately.",
+        "selection": "Easy, Medium and Hard follow the game's Gwent difficulty; practice can select the policy separately.",
         "vanilla_difficulty_fact": "gwent_difficulty",
         "vanilla_fact_values": {"easy": 1, "normal": 2, "hard": 3},
         "unset_fact_value": 0,
@@ -2243,14 +2260,49 @@ def _prepare_policy_exports(
     temperatures: dict[str, float],
     *,
     action_sequence_hash: bool = False,
+    policy_bundle_path: Path | None = None,
 ) -> tuple[dict[str, str], dict[str, Any], dict[str, dict[str, Any]]]:
-    try:
-        from scripts import create_policy_fixtures, export_policy_as3
-    except ModuleNotFoundError:
-        import create_policy_fixtures
-        import export_policy_as3
+    if policy_bundle_path is None:
+        try:
+            from scripts import create_policy_fixtures, export_policy_as3
+        except ModuleNotFoundError:
+            import create_policy_fixtures
+            import export_policy_as3
+    else:
+        try:
+            from scripts import policy_bundle, policy_probes
+        except ModuleNotFoundError:
+            import policy_bundle
+            import policy_probes
 
     catalog_path = ROOT / ".runtime/catalog.json"
+    prepared = None
+    probes_path = None
+    if policy_bundle_path is not None:
+        bundle = policy_bundle.load_bundle(policy_bundle_path)
+        if bundle.probes_path is None:
+            raise ModBuildError(
+                "policy bundle is missing its reference inference checks"
+            )
+        probes_path = bundle.probes_path
+        policy_probes.validate_bundle_probes(probes_path, bundle.metadata)
+        POLICY_EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+        prepared_root = Path(
+            tempfile.mkdtemp(prefix="prepared-", dir=POLICY_EXPORT_DIR)
+        )
+        prepared = policy_bundle.materialize(
+            policy_bundle_path, catalog_path, prepared_root / "models"
+        )
+    else:
+        for tier, checkpoint in tier_checkpoints.items():
+            if not checkpoint.expanduser().is_file():
+                raise ModBuildError(f"{tier} checkpoint does not exist: {checkpoint}")
+    tier_hashes = {
+        tier: prepared[tier].metadata["checkpoint_sha256"]
+        if prepared is not None
+        else _hash(tier_checkpoints[tier].expanduser().resolve())
+        for tier in TIER_NAMES
+    }
     node = shutil.which("node")
     if node is None:
         raise ModBuildError("Node.js is required to gate the exported policy")
@@ -2264,26 +2316,35 @@ def _prepare_policy_exports(
     value_layout_by_hash: dict[str, dict[str, dict[str, Any]]] = {}
 
     for tier in TIER_NAMES:
-        checkpoint = tier_checkpoints[tier].expanduser().resolve()
-        if not checkpoint.is_file():
-            raise ModBuildError(f"{tier} checkpoint does not exist: {checkpoint}")
-        checkpoint_hash = _hash(checkpoint)
+        checkpoint_hash = tier_hashes[tier]
         if checkpoint_hash in metadata_by_hash:
             continue
         class_name = f"GwaiNetWeightsData_{checkpoint_hash[:16]}"
-        output_dir = POLICY_EXPORT_DIR / checkpoint_hash
-        metadata = export_policy_as3.export(
-            checkpoint, catalog_path, output_dir, class_name=class_name
-        )
-        fixture_path = POLICY_FIXTURE_DIR / f"{checkpoint_hash}.jsonl"
-        fixture_summary = create_policy_fixtures.create_fixtures(
-            checkpoint_path=checkpoint,
-            catalog_path=catalog_path,
-            output_path=fixture_path,
-            count=200,
-            seed=20261026,
-            env_count=10,
-        )
+        if prepared is not None:
+            model = prepared[tier]
+            output_dir = model.export_dir
+            metadata = model.metadata
+            fixture_summary = policy_probes.prepare_checks(
+                probes_path, metadata, output_dir
+            )
+            fixture_path = Path(fixture_summary["path"])
+            replay_metadata_path = Path(fixture_summary["metadata_path"])
+        else:
+            checkpoint = tier_checkpoints[tier].expanduser().resolve()
+            output_dir = POLICY_EXPORT_DIR / checkpoint_hash
+            metadata = export_policy_as3.export(
+                checkpoint, catalog_path, output_dir, class_name=class_name
+            )
+            fixture_path = POLICY_FIXTURE_DIR / f"{checkpoint_hash}.jsonl"
+            fixture_summary = create_policy_fixtures.create_fixtures(
+                checkpoint_path=checkpoint,
+                catalog_path=catalog_path,
+                output_path=fixture_path,
+                count=200,
+                seed=20261026,
+                env_count=10,
+            )
+            replay_metadata_path = output_dir / "metadata.json"
         command = [
             node,
             str(replay),
@@ -2296,7 +2357,7 @@ def _prepare_policy_exports(
             "--record",
             str(fixture_path),
             "--metadata",
-            str(output_dir / "metadata.json"),
+            str(replay_metadata_path),
             "--weights",
             str(output_dir / "policy.f32.bin"),
             "--expected-network-sha256",
@@ -2322,7 +2383,11 @@ def _prepare_policy_exports(
             or summary.get("fixtureHeader", {}).get("checkpoint_sha256")
             != checkpoint_hash
             or fixture_summary.get("decision_source")
-            != "synthetic schema coverage (not gameplay or rules parity)"
+            != (
+                policy_probes.SOURCE
+                if prepared is not None
+                else "synthetic schema coverage (not gameplay or rules parity)"
+            )
             or fixture_summary.get("dev_game_count") != 0
             or not 1 <= fixture_summary.get("synthetic_batch_size", 0) <= 10
             or fixture_summary.get("count") != 200
@@ -2336,6 +2401,7 @@ def _prepare_policy_exports(
         value_layout_by_hash[checkpoint_hash] = value_layout
         fixture_by_hash[checkpoint_hash] = {
             "path": str(fixture_path),
+            "metadata_path": str(replay_metadata_path),
             "decision_source": fixture_summary["decision_source"],
             "count": fixture_summary["count"],
             "dev_game_count": 0,
@@ -2343,10 +2409,7 @@ def _prepare_policy_exports(
             "node": summary,
         }
 
-    tier_class_names = {
-        tier: class_by_hash[_hash(tier_checkpoints[tier].expanduser().resolve())]
-        for tier in TIER_NAMES
-    }
+    tier_class_names = {tier: class_by_hash[tier_hashes[tier]] for tier in TIER_NAMES}
     sources = {
         "GwaiCapture": (AS3_DIR / "GwaiCapture.as").read_text(encoding="utf-8"),
         "GwaiPolicyCore": (AS3_DIR / "GwaiPolicyCore.as").read_text(encoding="utf-8"),
@@ -2366,6 +2429,7 @@ def _prepare_policy_exports(
     policy_exports = [
         {
             "checkpoint_sha256": checkpoint_hash,
+            "export_directory": str(export_dir_by_hash[checkpoint_hash]),
             "update_count": metadata["update_count"],
             "export_sha256": metadata["export_sha256"],
             "catalog_sha256": metadata["catalog_sha256"],
@@ -2375,10 +2439,7 @@ def _prepare_policy_exports(
             "weight_bytes": metadata["weight_bytes"],
             "weights_class_name": metadata["weights_class_name"],
             "weights_blob_shared_by": [
-                tier
-                for tier in TIER_NAMES
-                if _hash(tier_checkpoints[tier].expanduser().resolve())
-                == checkpoint_hash
+                tier for tier in TIER_NAMES if tier_hashes[tier] == checkpoint_hash
             ],
             "export_gate": fixture_by_hash[checkpoint_hash],
             "value_head": {
@@ -2402,24 +2463,18 @@ def _prepare_policy_exports(
     tier_policies = {
         tier: {
             "form": "checkpoint",
-            "checkpoint_sha256": metadata_by_hash[
-                _hash(tier_checkpoints[tier].expanduser().resolve())
-            ]["checkpoint_sha256"],
-            "update_count": metadata_by_hash[
-                _hash(tier_checkpoints[tier].expanduser().resolve())
-            ]["update_count"],
-            "export_sha256": metadata_by_hash[
-                _hash(tier_checkpoints[tier].expanduser().resolve())
-            ]["export_sha256"],
-            "weights_blob_sha256": metadata_by_hash[
-                _hash(tier_checkpoints[tier].expanduser().resolve())
-            ]["export_sha256"],
+            "checkpoint_sha256": metadata_by_hash[tier_hashes[tier]][
+                "checkpoint_sha256"
+            ],
+            "update_count": metadata_by_hash[tier_hashes[tier]]["update_count"],
+            "export_sha256": metadata_by_hash[tier_hashes[tier]]["export_sha256"],
+            "weights_blob_sha256": metadata_by_hash[tier_hashes[tier]]["export_sha256"],
             "temperature": temperatures[tier],
             "fallback": "greedy",
         }
         for tier in TIER_NAMES
     }
-    primary_hash = _hash(tier_checkpoints["normal"].expanduser().resolve())
+    primary_hash = tier_hashes["normal"]
     return (
         sources,
         {
@@ -2518,10 +2573,15 @@ def build(
     checkpoint_path: Path = DEFAULT_CHECKPOINT,
     tier_checkpoint_overrides: dict[str, Path] | None = None,
     easy_temperature: float = 0.0,
+    policy_bundle_path: Path | None = None,
     output_dir: Path | None = None,
 ) -> dict[str, Any]:
     if recorder and probe:
         raise ModBuildError("recorder and timing-probe editions are mutually exclusive")
+    if policy_bundle_path is not None and (recorder or tier_checkpoint_overrides):
+        raise ModBuildError(
+            "a policy bundle cannot be combined with recorder or checkpoint overrides"
+        )
     if output_dir is None:
         output_dir = (
             RECORDER_OUTPUT_DIR
@@ -2605,7 +2665,10 @@ def build(
             if not math.isfinite(easy_temperature) or easy_temperature < 0:
                 raise ModBuildError("Easy temperature must be finite and non-negative")
             sources, policy_manifest, _ = _prepare_policy_exports(
-                tier_checkpoints, temperatures, action_sequence_hash=probe
+                tier_checkpoints,
+                temperatures,
+                action_sequence_hash=probe,
+                policy_bundle_path=policy_bundle_path,
             )
             if probe:
                 sources = _add_timing_probe_sources(sources)
@@ -2656,7 +2719,7 @@ def build(
                 )
             for policy_export in report["policy_exports"]:
                 checkpoint_hash = policy_export["checkpoint_sha256"]
-                export_dir = POLICY_EXPORT_DIR / checkpoint_hash
+                export_dir = Path(policy_export["export_directory"])
                 report["inputs_sha256"][f"policy-{checkpoint_hash}.f32.bin"] = _hash(
                     export_dir / "policy.f32.bin"
                 )
@@ -2819,6 +2882,17 @@ def build(
                         for item in report["policy_exports"]
                     },
                 )
+                report["compiled_policy_data"] = compiled_policy.verify(
+                    helper_exports,
+                    {
+                        item["weights_class_name"]: json.loads(
+                            (
+                                Path(item["export_directory"]) / "metadata.json"
+                            ).read_text(encoding="utf-8")
+                        )
+                        for item in report["policy_exports"]
+                    },
+                )
                 if probe:
                     verify_compiled_timing_probe(compiled, helper_exports)
                 node = shutil.which("node")
@@ -2836,7 +2910,7 @@ def build(
                 probe_action_gates = {}
                 for policy_export in report["policy_exports"]:
                     checkpoint_hash = policy_export["checkpoint_sha256"]
-                    export_dir = POLICY_EXPORT_DIR / checkpoint_hash
+                    export_dir = Path(policy_export["export_directory"])
                     fixture_path = policy_export["export_gate"]["path"]
                     easy_temperature = (
                         temperatures["easy"]
@@ -2855,7 +2929,7 @@ def build(
                         "--easy-temperature",
                         str(easy_temperature),
                         "--metadata",
-                        str(export_dir / "metadata.json"),
+                        policy_export["export_gate"]["metadata_path"],
                         "--weights",
                         str(export_dir / "policy.f32.bin"),
                         "--expected-network-sha256",
@@ -3013,6 +3087,9 @@ def main() -> int:
     )
     parser.add_argument("--checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument(
+        "--policy-bundle", type=Path, help="use a verified inference-only model bundle"
+    )
+    parser.add_argument(
         "--tier-checkpoint",
         action="append",
         default=[],
@@ -3035,13 +3112,14 @@ def main() -> int:
         tier = tier.lower()
         if not separator or tier not in TIER_NAMES or not value:
             parser.error(
-                "--tier-checkpoint must be TIER=PATH for an Easy, Normal, or Hard tier"
+                "--tier-checkpoint must be TIER=PATH for an Easy, Medium, or Hard tier"
             )
         overrides[tier] = Path(value)
     report = build(
         recorder=args.recorder,
         probe=args.probe,
         checkpoint_path=args.checkpoint,
+        policy_bundle_path=args.policy_bundle,
         tier_checkpoint_overrides=overrides,
         easy_temperature=args.easy_temperature,
         output_dir=args.output_dir,

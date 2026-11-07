@@ -1,14 +1,25 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 — 2026-11-07
 
-- Initial source preview of the trained Gwent opponent and its build tools.
-- Easy, Normal and Hard policies, with one enable switch for story and practice.
-- Practice opponent and AI-difficulty selection, independent of native deck level.
-- Computed moves released without artificial thinking delays.
-- Optional local public-action recording, decision-source diagnostics, coaching
-  and analysis.
+### Added
 
-Standalone source-build verification and clean source-only checks have passed.
-The current preview's native playtest and installation on another machine are
-pending. There is no public binary or trained-model release yet.
+- Downloadable setup with three trained inference policies, verified tool
+  downloads and local preparation from an installed game.
+- Gwent: A Worthy Opponent menu, one Enable AI switch, Easy/Medium/Hard
+  practice selection, and clearly grouped optional assistance and diagnostics.
+- Selection and model identity in public traces, including requested and
+  effective tiers and story/practice mode.
+- Install/removal process guards and checked receipts with rollback backups.
+
+### Fixed
+
+- Story verification now reports the requested selection and native difficulty.
+- Stock-story turns are identified separately from trained-policy fallbacks.
+- Compiled model checks verify actual embedded tensors and encoding tables.
+
+### Notes
+
+- The trained policies make decisions locally using their own seat's view.
+- The game retains its cards, rules, NPC decks, rewards and collection.
+- Setup requires compatible Remastered resources and Python 3.12+.

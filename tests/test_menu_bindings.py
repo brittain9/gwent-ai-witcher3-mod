@@ -65,7 +65,7 @@ for(const [raw,expected] of [['0',1],['1',2],['2',3],['3',3],['4',3],['-1',3],['
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_both_menus_expose_exactly_easy_normal_hard_and_no_story_override(
+    def test_both_menus_expose_exactly_easy_medium_hard_and_no_story_override(
         self,
     ) -> None:
         for name in (
@@ -79,20 +79,77 @@ for(const [raw,expected] of [['0',1],['1',2],['2',3],['3',3],['4',3],['-1',3],['
                     option.get("displayName")
                     for option in tier.findall("OptionsArray/Option")
                 ],
-                ["Easy", "Normal", "Hard"],
+                ["Easy", "Medium", "Hard"],
             )
             self.assertIsNone(root.find(".//Var[@id='GwaiDifficulty']"))
             self.assertIsNone(root.find(".//Var[@id='GwaiDevAI']"))
             self.assertIsNone(root.find(".//Var[@id='GwaiClockEnabled']"))
             self.assertIsNone(root.find(".//Var[@id='GwaiClockScale']"))
             for setting, label in (
-                ("GwaiEnabled", "Enable trained AI"),
-                ("GwaiSignal", "[Debug] Show decision source"),
-                ("GwaiTrace", "[Debug] Record play-by-play"),
+                ("GwaiEnabled", "Enable AI"),
+                ("GwaiSignal", "Show decision source"),
+                ("GwaiTrace", "Record public play-by-play"),
             ):
                 self.assertEqual(
                     root.find(f".//Var[@id='{setting}']").get("displayName"), label
                 )
+
+    def test_core_controls_precede_optional_tools_and_troubleshooting(self) -> None:
+        for name in (
+            "mod/ai/settings/menu/modW3GwentAI.xml",
+            "mod/probe-timing/settings/menu/modW3GwentAIProbe.xml",
+        ):
+            root = ET.parse(ROOT / name).getroot()
+            order = [var.get("id") for var in root.findall("Group/VisibleVars/Var")]
+            self.assertEqual(order[0], "GwaiEnabled")
+            self.assertLess(order.index("GwaiDevStart"), order.index("GwaiCoach"))
+            self.assertLess(order.index("GwaiStats"), order.index("GwaiSignal"))
+            self.assertLess(
+                order.index("GwaiDiagnosticsHeader"), order.index("GwaiDevReport")
+            )
+            self.assertEqual(
+                root.find(".//Var[@id='GwaiDiagnosticsHeader']").get("displayType"),
+                "SEPARATOR",
+            )
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for menu naming")
+    def test_native_menu_branding_changes_only_the_mods_own_group(self) -> None:
+        bodies = {
+            name: javascript_body(name)
+            for name in ("GwaiNameOptions", "showOptionsPanel")
+        }
+        harness = r"""
+const assert = require('node:assert/strict'); const bodies = BODIES;
+function item(id, label, children=[], groupID=-1) {
+    const values = {id,label,listTitle:label,subElements:array(children),groupID};
+    return {values,GetMemberFlashString(k){return values[k]??''},
+      GetMemberFlashInt(k){return values[k]??-1},
+      GetMemberFlashArray(k){return values[k]},
+      SetMemberFlashString(k,v){values[k]=v}};
+}
+function array(items) { return {items,GetLength(){return items.length},GetElementFlashObject(i){return items[i]}}; }
+const own = item('mainmenu_gwent','Gwent Deck',[item('0','Enable AI',[],42)]);
+const unrelated = item('mainmenu_gwent','Unrelated Gwent',[item('0','Other setting',[],9)]);
+const other = item('gameplay','Gameplay',[item('0','Gameplay option',[],4)]);
+const tree = array([item('mainmenu_mods','Mods',[own,unrelated]),other]);
+const events = [];
+const env = {isMainMenu:false,wrappedMethod(){events.push('native')},
+  theGame:{GetInGameConfigWrapper(){return {GetGroupIdx(){return 42}}}},
+  IngameMenu_FillOptionsSubMenuData(storage,isMain){assert.equal(isMain,false);events.push('gather');return tree},
+  m_flashValueStorage:{SetFlashArray(key,value){assert.equal(key,'ingamemenu.options.entries');assert.equal(value,tree);events.push('publish')}}};
+env.GwaiNameOptions = (entries,groupID)=>new Function('env','entries','groupID','with(env){'+bodies.GwaiNameOptions+'}')(env,entries,groupID);
+new Function('env','with(env){'+bodies.showOptionsPanel+'}')(env);
+assert.deepEqual(events,['native','gather','publish']);
+assert.equal(own.values.label,'Gwent: A Worthy Opponent');
+assert.equal(own.values.listTitle,'Gwent: A Worthy Opponent');
+assert.equal(own.values.id,'mainmenu_gwent');
+assert.equal(unrelated.values.label,'Unrelated Gwent');
+assert.equal(other.values.label,'Gameplay');
+assert.equal(own.values.subElements.items[0].values.label,'Enable AI');
+env.GwaiNameOptions(null,42);
+""".replace("BODIES", json.dumps(bodies))
+        result = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     @unittest.skipUnless(
         shutil.which("node"), "Node is required for the settings boundary check"

@@ -1,62 +1,76 @@
-# Witcher 3 Gwent AI
+# Gwent: A Worthy Opponent
 
-A trained opponent for the Gwent minigame in **The Witcher 3: Wild Hunt**.
-It replaces decisions while keeping the game's cards, NPC decks, rules,
-rewards and collection progression.
+A neural-network opponent trained through **self-play reinforcement learning**
+for the Gwent minigame in **The Witcher 3: Wild Hunt**. It makes its decisions
+locally, using its own hand and the public board, while preserving the game's
+cards, rules, NPC decks, rewards and collection progression.
 
-This repository is a **source preview**. The standalone source build and clean
-source-only checks have passed. There is no downloadable mod package or trained
-model yet; building a playable opponent requires a compatible trained checkpoint
-supplied separately.
+The policy learned from simulated games against itself, with match results
+providing the learning signal. During play, the trained network runs inside
+the game's Gwent screen. It needs no server or AI subscription.
+[How it works](docs/how-it-works.md) explains the policy and information it uses.
+
+## Install
+
+1. Download the player ZIP and its checksum from the
+   [latest release](https://github.com/brittain9/gwent-ai-witcher3-mod/releases/latest).
+2. Install **Python 3.12+** if needed, extract the whole ZIP to a writable folder,
+   and close the game and REDlauncher.
+3. On **Windows**, open `Install.cmd`. On **Linux**, run `sh Install.sh`.
+   Select the game folder containing `bin` and `content` when asked.
+4. Start the game, load a save, and open **Options > Mods > Gwent: A Worthy Opponent**.
+   Turn on **Enable AI**.
+
+First setup downloads verified build tools when needed and creates the mod
+from your installed game's resources. Models are included in the player
+download; PyTorch and training tools are not needed. The finished opponent
+runs inside the game. Keep the extracted folder: it holds your installation
+receipt and rollback backups.
+
+[Installation, compatibility and removal](docs/install.md) ·
+[Build from source](docs/building.md) · [Changelog](CHANGELOG.md)
 
 ## Playing
 
-- **Enable trained AI** is the switch for story and practice matches. Turn it
-  off to use the stock opponent.
-- Story matches follow the game's **Easy, Normal or Hard** Gwent difficulty.
-  That game setting still selects the NPC's native deck level.
-- Practice lets you choose an opponent and **Practice AI difficulty** separately
-  from the native deck level, using your existing collection.
+- **Enable AI** selects the trained opponent in both story and practice matches.
+  Turn it off to use the stock opponent.
+- The mod has **Easy, Medium and Hard** policies. Story matches follow the
+  game's Gwent difficulty; its middle setting may be labeled Normal.
+- Practice lets you choose an opponent and AI difficulty separately, using
+  your existing collection. Native NPC deck selection stays with the game.
 - Moves run when computation finishes, with no artificial thinking delay.
-- Coaching, analysis and **Stronger story opponents** are optional. They are
-  off by default.
+- Coaching, analysis and **Stronger story opponents** are optional and off
+  by default. Troubleshooting controls are grouped at the end of the menu.
 
-The network sees its own hand and the public board, scores and card counts.
-It does not read the cards in your hidden hand or either deck's order.
-[How it works](docs/how-it-works.md) explains the policy and game integration.
+The network sees its own hand, public cards, scores and card counts. It does
+not read your hidden hand or either deck's order. Difficulty selects different
+trained policies, rather than granting hidden information or changing cards.
 
-## Status and limits
+## Compatibility and limits
 
-The AI can overcommit in early rounds and reach the third round without cards.
-Match-level planning and card conservation are areas for further improvement.
+Setup checks the exact Gwent resources required by the mod. The supported
+resource set is from the Remastered edition; executable patch labels alone
+do not determine compatibility. Classic 1.32 is unsupported. Another mod that
+replaces the Gwent screen can conflict.
 
-The trained opponent and public-action recorder have worked in live games on
-Linux through Steam/Proton with pinned Gwent resources. The current
-simplified menu still needs a completed live acceptance check. A clean install
-on another machine and Windows gameplay remain unverified. Classic 1.32 is not
-supported; different game resources require a reviewed build.
+Trained play has been observed on Windows and Linux through Steam/Proton.
+The AI is fallible; there is no claim of optimal play or a calibrated human
+win rate. A strange-looking move needs the complete decision context to judge.
+Your collection and the NPC's native deck still affect each match.
 
-Weather, card spending and passing can still look weak or wasteful. The project
-does not claim optimal play or a measured human win rate. Original collection
-gaps still affect how hard each opponent is. Mods that replace the Gwent screen
-can conflict.
+## Diagnose a problem
 
-[Installation and controls](docs/install.md) · [Build from source](docs/building.md)
-· [Changelog](CHANGELOG.md)
+**Show AI verification** reports the requested selection and recorded decision
+sources. **Show decision source** displays network and fallback messages.
+**Record play-by-play** saves public actions, settled boards and match results
+locally, including the selected tier and model identity in new traces.
 
-## Debugging
-
-**[Debug] Show decision source** identifies network decisions and fallbacks.
-**[Debug] Record play-by-play** records public actions, settled boards and
-results locally. It excludes hidden hands, deck order and unrevealed choices.
-Both debug controls are off by default. Recording and on-screen messages are
-independent, and nothing is uploaded automatically. Include the build identity
-and public trace when reporting a problem; see
-[the install guide](docs/install.md#diagnose-a-problem).
+Both debug controls are off by default. Recording excludes hidden hands, deck
+order and unrevealed choices, and nothing uploads automatically. See
+[troubleshooting](docs/install.md#troubleshooting) for reports and rollback.
 
 ## License
 
-Original project code is licensed under [MIT](LICENSE). Game files and other
-third-party material are outside that license. Trained models are separate
-artifacts and are not included in this source preview. See [NOTICE](NOTICE.md)
-for the boundary.
+Original code, documentation and the inference weights in the player download
+use the [MIT license](LICENSE). The game and external tools retain their own
+rights and licenses. See [NOTICE](NOTICE.md).

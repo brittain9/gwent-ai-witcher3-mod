@@ -15,8 +15,11 @@ Steam, every library in libraryfolders.vdf). It never starts the game or reads s
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
+import io
 import json
+import platform
 import re
 import shutil
 import subprocess
@@ -49,6 +52,17 @@ SWF_MEMBER = "gameplay\\gui_new\\swf\\gwint\\gwint_game.redswf"
 STEAM_APP_ID = 292030
 GAME_FOLDER = "The Witcher 3"
 EXE_VERSION_RE = re.compile(rb"(\d+\.\d+\.\d+)  P4CL: (\d+)")
+GAME_PROCESS_NAMES = frozenset(
+    {
+        "witcher3.exe",
+        "witcher3",
+        "redlauncher.exe",
+        "redlauncher",
+        "redprelauncher.exe",
+        "redprelauncher",
+        "redprelauncher.",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -95,6 +109,50 @@ OUR_MOD_NAMES = {variant.mod_name.lower() for variant in VARIANTS.values()}
 
 class ModInstallError(RuntimeError):
     """Raised when a package, the game folder or an install receipt is not as expected."""
+
+
+def running_game_processes() -> list[str]:
+    """Read executable names only; process arguments are never inspected."""
+    windows = platform.system() == "Windows"
+    command = (
+        ["tasklist", "/FO", "CSV", "/NH"] if windows else ["ps", "-e", "-o", "comm="]
+    )
+    try:
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=15, check=False
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ModInstallError(
+            "Cannot check whether the game is running; no game files were changed"
+        ) from exc
+    if result.returncode or not result.stdout.strip():
+        raise ModInstallError(
+            "Cannot read the process list; no game files were changed"
+        )
+    if windows:
+        rows = list(csv.reader(io.StringIO(result.stdout)))
+        if any(len(row) < 2 or not row[1].strip().isdigit() for row in rows if row):
+            raise ModInstallError(
+                "Cannot parse the Windows process list; no game files were changed"
+            )
+        names = [row[0] for row in rows if row]
+    else:
+        names = result.stdout.splitlines()
+    return sorted(
+        {
+            Path(name.strip()).name
+            for name in names
+            if Path(name.strip()).name.casefold() in GAME_PROCESS_NAMES
+        }
+    )
+
+
+def require_game_stopped() -> None:
+    if names := running_game_processes():
+        raise ModInstallError(
+            "Close The Witcher 3 and its REDlauncher before installing or removing the mod "
+            f"(running: {', '.join(names)})"
+        )
 
 
 def _sha256(path: Path) -> str:
@@ -441,7 +499,19 @@ def _mods_folder(game_dir: Path) -> list[str]:
     )
 
 
-def preflight(game_dir: Path, pins: dict[str, Any], mod_name: str) -> Preflight:
+def preflight(
+    game_dir: Path,
+    pins: dict[str, Any],
+    mod_name: str,
+    *,
+    installed_mod: str | None = None,
+) -> Preflight:
+    if installed_mod is not None and (
+        installed_mod != mod_name or installed_mod.lower() not in OUR_MOD_NAMES
+    ):
+        raise ModInstallError(
+            "preparation can retain only the same installed mod edition"
+        )
     game_dir = game_dir.expanduser().resolve()
     check = Preflight(game_dir)
     if not (game_dir / "content/content0").is_dir():
@@ -563,12 +633,17 @@ def preflight(game_dir: Path, pins: dict[str, Any], mod_name: str) -> Preflight:
         )
         return check
     check.mods_dir = mods[0] if mods else MODS_DIR
-    _check_other_mods(check, game_dir, pins, mod_name)
+    _check_other_mods(check, game_dir, pins, mod_name, installed_mod=installed_mod)
     return check
 
 
 def _check_other_mods(
-    check: Preflight, game_dir: Path, pins: dict[str, Any], mod_name: str
+    check: Preflight,
+    game_dir: Path,
+    pins: dict[str, Any],
+    mod_name: str,
+    *,
+    installed_mod: str | None = None,
 ) -> None:
     folders = []
     mods_root = game_dir / check.mods_dir
@@ -591,6 +666,11 @@ def _check_other_mods(
     for folder in folders:
         label = folder.relative_to(game_dir).as_posix()
         if folder.parent == mods_root and folder.name.lower() in OUR_MOD_NAMES:
+            if folder.name == installed_mod:
+                check.notes.append(
+                    f"{label} retained during preparation; installation is unchanged"
+                )
+                continue
             check.problems.append(
                 f"{label} is already present. If this tool installed it, run --uninstall first; "
                 "otherwise delete that folder (one edition of the mod at a time)"
@@ -739,6 +819,7 @@ def install_package(
 
     stamp = datetime.now().astimezone()
     backup_dir = runtime_dir / f"mod-backup-{stamp.strftime('%Y%m%d-%H%M%S-%f')}"
+    require_game_stopped()
     backup_dir.mkdir(parents=True, exist_ok=False)
     entries: list[dict[str, Any]] = []
     created_dirs: list[str] = []
@@ -872,6 +953,7 @@ def uninstall_package(game_dir: Path, *, runtime_dir: Path = RUNTIME_DIR) -> Pat
             backup = backup_dir.joinpath(*relative.parts)
             if not backup.is_file() or _sha256(backup) != entry["original_sha256"]:
                 raise ModInstallError(f"backup file is missing or changed: {relative}")
+    require_game_stopped()
     _invalidate_script_cache(game_dir, backup_dir / "script-cache-before-uninstall")
     for entry in receipt["files"]:
         relative = _safe_relative(entry["path"])

@@ -5,7 +5,7 @@ internal class GwaiPlayTrace
    private static var actionIndex:int = 0;
    private static var pending:Object = null;
 
-   public static function begin(enabled:Boolean, manager:CardManager, flow:GwintGameFlowController, round:int) : void
+   public static function begin(enabled:Boolean, manager:CardManager, flow:GwintGameFlowController, round:int, selection:Object = null) : void
    {
       active = false;
       sequence = 0;
@@ -14,8 +14,10 @@ internal class GwaiPlayTrace
       if(!enabled) return;
       active = true;
       dispatch("OnW3GwentPlayTraceStart",["__GWAI_TRACE_BUILD__"]);
-      emit({event:"match_start",schema:"w3gwent-playtrace-v1",schema_version:1,
-         build:"__GWAI_TRACE_BUILD__",information:"public",state:stateRecord(manager,flow,round)});
+      var record:Object = {event:"match_start",schema:"w3gwent-playtrace-v1",schema_version:1,
+         build:"__GWAI_TRACE_BUILD__",information:"public",state:stateRecord(manager,flow,round)};
+      if(selection != null) record.selection = selectionRecord(selection);
+      emit(record);
    }
 
    // Retain identities only until native effects finish; do not expose a selected
@@ -84,10 +86,11 @@ internal class GwaiPlayTrace
       emit({event:"choice",seat:seat,choice:kind});
    }
 
-   public static function decision(source:String, detail:String) : void
+   public static function decision(source:String, detail:String, selection:Object = null) : void
    {
       if(!active) return;
       var record:Object = {event:"decision_source",source:source};
+      if(selection != null) record.selection = selectionRecord(selection);
       // The detail may name a selected card which is still private. Preserve
       // only a boundary-stage label and the standard runtime error identifier.
       if(source == "vanilla" || source == "greedy")
@@ -98,6 +101,14 @@ internal class GwaiPlayTrace
          record.stage = boundary < 0 ? "policy" : detail.substr(0,Math.min(boundary,80));
       }
       emit(record);
+   }
+
+   private static function selectionRecord(selection:Object) : Object
+   {
+      return {enabled:Boolean(selection.enabled),requested_tier:int(selection.requested_tier),
+         effective_tier:int(selection.effective_tier),mode:String(selection.mode),
+         opponent:String(selection.opponent),npc_difficulty:int(selection.npc_difficulty),
+         checkpoint_sha256:String(selection.checkpoint_sha256),weights_sha256:String(selection.weights_sha256)};
    }
 
    public static function stateEvent(kind:String, manager:CardManager, flow:GwintGameFlowController, round:int) : void

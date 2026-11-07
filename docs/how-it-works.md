@@ -1,45 +1,63 @@
 # How the AI works
 
-The opponent learns a policy: a neural network that rates legal Gwent actions
-from the information available to one player. A value head estimates match
-outcomes from that same view. The objective is winning the match, which can
-require giving up a round or saving a useful card.
+The opponent uses **self-play reinforcement learning**: a policy learns from
+simulated games against itself, with match outcomes providing the learning
+signal. A neural network rates legal actions from one player's information.
+Its value head estimates loss, draw and win probabilities from that same view.
+Winning the match can require giving up a round or saving a useful card.
 
-## Decisions inside The Witcher 3
+## Training and play
 
-The mod captures the AI seat's own hand, public zones and scores, and the
-opponent's hand count. It lists legal actions and runs the exported policy
-inside the game's Gwent screen. Policy evaluation runs locally in the game.
-Different compatible checkpoints can provide the three difficulty levels.
+The trained model is a policy/value network with a shared representation of
+the visible position and separate action-group, placement and outcome heads.
+Proximal policy optimization updates the policy from completed-game outcomes,
+with damped self-play updates that limit abrupt changes. Different frozen
+checkpoints provide the three difficulty levels.
 
-At temperature zero it selects the highest-rated legal action through the
-network's action grouping. The chosen move goes through the game's native
-transaction and effect path. There is no artificial pause after inference;
-loading, computation and the game's own presentation still take time.
+Training happens before the mod is packaged. During a match, the mod runs
+**policy inference**: it evaluates the current legal actions with fixed
+learned weights. It does not train, perform a tree search or call an AI service
+while you play. Self-play describes how the policy learned, not a guarantee of
+optimal play or a measured advantage against strong humans.
 
-Original cards, deck collections, rule execution, rewards and progression stay
-with the game. The native Gwent difficulty still selects the NPC deck level.
-The mod's practice controls can choose the policy separately from that level.
+## Information and decisions
 
-## When something fails
+The mod captures the AI seat's own hand, public zones, scores and card counts.
+It does not read the other seat's hidden cards or either deck's order.
+Original cards, rule execution, rewards and collection progression stay with
+the game.
 
-Unknown card vocabulary or an invalid integration step hands the turn back to
+At temperature zero, the network selects the highest-rated action group,
+then the highest-rated legal action within that group. The chosen action goes
+through the game's native transaction and effect path. There is no artificial
+pause after inference; loading, computation and presentation still take time.
+
+The native Gwent difficulty selects the NPC's deck level and the story policy.
+Practice can choose a trained policy separately. Optional stronger-story
+settings can raise a policy tier without changing the NPC collection.
+
+## When a decision fails
+
+Unknown card vocabulary or a failed integration step hands the turn back to
 the stock opponent. An inference error can use a simple greedy rule instead.
-These are recorded as separate decision sources, so a fallback game cannot be
-mistaken for evidence about the trained policy.
+These are distinct diagnostic sources. Verification and optional public traces
+make a selected stock turn, a fallback and a network decision distinguishable.
 
-Optional public recording observes the native action start and the settled
-result. It excludes hidden hand identities and deck order. That makes it useful
-for explaining a visible sequence and diagnosing execution failures, while
-leaving hidden-information reconstruction out of the public trace.
+The recorder publishes a card's identity only after its native action commits.
+It records public results and selection/model identity, while excluding hidden
+hands, deck order and unrevealed choices.
 
-## Verification
+## Local preparation and verification
 
-Portable policy checks compare Python and ActionScript on synthetic schema
-fixtures. Compilation checks repeat those comparisons against the exported
-screen and verify timer bindings and class initialization. These checks cover
-encoding and integration; they do not establish playing strength or full game
-rules parity. Weather, passing and card conservation remain areas to improve.
+The player download contains original integration code and learned float32
+parameters. Setup derives the card vocabulary and effect tables from the
+player's compatible game, generates model headers locally, and compiles the
+modified Gwent screen.
 
-See [building](building.md) for required inputs and verification status, and
-[NOTICE](../NOTICE.md) for licensing of source and generated artifacts.
+Before installation, checks compare Python reference outputs with ActionScript
+on deterministic fictional positions. Compilation checks repeat inference
+checks against re-exported code and verify embedded tensor bytes, encoding
+tables, timer bindings and class initialization. These test encoding and
+integration; they do not measure playing strength or certify every game path.
+
+See [installation](install.md), [building](building.md) and [NOTICE](../NOTICE.md).

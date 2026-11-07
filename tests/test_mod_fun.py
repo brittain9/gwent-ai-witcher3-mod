@@ -77,7 +77,7 @@ class StoryTierTests(unittest.TestCase):
             mod_fun.deck_label("CrossroadsInnkeeper"), "Crossroads Innkeeper"
         )
         self.assertEqual(
-            mod_fun.deck_label("ScoiaNormal"), "a Scoia'tael player (normal)"
+            mod_fun.deck_label("ScoiaNormal"), "a Scoia'tael player (medium)"
         )
 
 

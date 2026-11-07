@@ -188,13 +188,29 @@ for(const enabled of [false,true]) for(const [tierIndex,tier] of [[0,1],[1,2],[2
     assert.equal(packet.story, true);
 }
 {
+    const f = fixture();
+    for (const [enabled,tierIndex,opponent,mode,tier,deck] of [
+        ['true','2','0',2,3,'NKHard'],
+        ['false','0','16',1,1,'Lambert'],
+        ['true','1','1',2,2,'NilfHard']
+    ]) {
+        Object.assign(f.values,{GwaiEnabled:enabled,GwaiDevTier:tierIndex,GwaiDevOpponent:opponent});
+        assert.equal(run('OnOptionValueChanged',f.env),true);
+        assert.equal(f.m.gwaiDevAI,mode);assert.equal(f.m.gwaiDevTier,tier);
+        assert.equal(f.m.selectedEnemyDeck,deck);
+        f.m.GwaiDevRestore();
+        assert.equal(f.m.gwaiDevAI,0);assert.equal(f.m.gwaiDevTier,0);
+        assert.equal(f.m.selectedEnemyDeck,'Thaler');assert.equal(f.values.GwaiEnabled,enabled);
+    }
+}
+{
     const f = fixture(), dialogs = [];
     f.env.optionName = 'GwaiDevReport';
     f.env.UDB_Ok = 'OK';
     f.env.GwaiVerificationText = () => 'Network choices: 12; vanilla fallbacks: 0';
     f.env.theGame.GetGuiManager = () => ({ ShowUserDialogAdv(...args) { dialogs.push(args); } });
     assert.equal(run('OnOptionValueChanged', f.env), true);
-    assert.deepEqual(dialogs[0], [0, 'Gwent AI verification', 'Network choices: 12; vanilla fallbacks: 0', false, 'OK']);
+    assert.deepEqual(dialogs[0], [0, 'Gwent: A Worthy Opponent', 'Network choices: 12; vanilla fallbacks: 0', false, 'OK']);
     assert.equal(f.values.GwaiDevReport, 'false');
     assert.equal(f.m.gameRequested, false);
     assert.deepEqual(f.events, ['wrapped']);

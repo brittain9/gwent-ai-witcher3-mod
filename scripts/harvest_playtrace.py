@@ -25,14 +25,21 @@ MATCH_KEY = re.compile(r"^(t\d{9})_(\d{9}|count|status|build|error)$")
 BUILD_ID = re.compile(r"[A-Za-z0-9_.:-]{1,128}")
 STATUSES = {"active", "final", "interrupted", "error", "truncated"}
 EVENT_KEYS = {
-    "match_start": {"schema", "schema_version", "build", "information", "state"},
+    "match_start": {
+        "schema",
+        "schema_version",
+        "build",
+        "information",
+        "state",
+        "selection",
+    },
     "action_started": {"seat", "action_id"},
     "action": {"seat", "action_id", "transaction", "state"},
     "action_cancelled": {"seat", "action_id", "state"},
     "pass": {"seat"},
     "round_complete": {"seat", "reason"},
     "choice": {"seat", "choice"},
-    "decision_source": {"source", "error", "stage"},
+    "decision_source": {"source", "error", "stage", "selection"},
     "round_start": {"state"},
     "round_end": {"state"},
     "match_end": {"reason", "winner", "pending_action", "state"},
@@ -150,6 +157,43 @@ def _integer(value: Any, where: str, minimum: int = 0) -> None:
         raise PlayTraceError(f"{where}: invalid integer")
 
 
+def _selection(selection: Any) -> None:
+    fields = {
+        "enabled",
+        "requested_tier",
+        "effective_tier",
+        "mode",
+        "opponent",
+        "npc_difficulty",
+        "checkpoint_sha256",
+        "weights_sha256",
+    }
+    _keys(selection, fields, "AI selection")
+    if set(selection) != fields or type(selection["enabled"]) is not bool:
+        raise PlayTraceError("AI selection is incomplete")
+    for key in ("requested_tier", "npc_difficulty"):
+        if type(selection[key]) is not int or selection[key] not in (1, 2, 3):
+            raise PlayTraceError("AI selection has an invalid requested difficulty")
+    tier = selection["effective_tier"]
+    if type(tier) is not int or tier not in (
+        (1, 2, 3) if selection["enabled"] else (0,)
+    ):
+        raise PlayTraceError("AI selection has an invalid effective tier")
+    if selection["mode"] not in {"story", "practice"}:
+        raise PlayTraceError("AI selection has an invalid match mode")
+    if not isinstance(selection["opponent"], str) or not re.fullmatch(
+        r"[A-Za-z0-9_]{0,128}", selection["opponent"]
+    ):
+        raise PlayTraceError("AI selection has an invalid opponent identifier")
+    for key in ("checkpoint_sha256", "weights_sha256"):
+        expected = r"[0-9a-f]{64}" if selection["enabled"] else ""
+        if (
+            not isinstance(selection[key], str)
+            or re.fullmatch(expected, selection[key]) is None
+        ):
+            raise PlayTraceError("AI selection has an invalid policy identity")
+
+
 def _number(value: Any) -> bool:
     return type(value) in (int, float) and math.isfinite(value)
 
@@ -264,9 +308,10 @@ def validate_events(events: list[dict[str, Any]], build: str, status: str) -> No
         if not isinstance(kind, str) or kind not in EVENT_KEYS:
             raise PlayTraceError(f"event {index}: unsupported event kind")
         _keys(event, EVENT_KEYS[kind] | {"event", "seq"}, f"event {index}")
-        required = EVENT_KEYS[kind] - (
-            {"error", "stage"} if kind == "decision_source" else set()
-        )
+        optional = {"selection"} if kind == "match_start" else set()
+        if kind == "decision_source":
+            optional = {"error", "stage", "selection"}
+        required = EVENT_KEYS[kind] - optional
         if not required.issubset(event):
             raise PlayTraceError(f"event {index}: missing required fields")
         if ended:
@@ -275,6 +320,8 @@ def validate_events(events: list[dict[str, Any]], build: str, status: str) -> No
             raise PlayTraceError("trace contains more than one match")
         if "state" in event:
             _state(event["state"])
+        if "selection" in event:
+            _selection(event["selection"])
         if "seat" in event and (
             type(event["seat"]) is not int or event["seat"] not in (0, 1)
         ):
@@ -321,6 +368,12 @@ def validate_events(events: list[dict[str, Any]], build: str, status: str) -> No
         if kind == "decision_source":
             if event.get("source") not in {"network", "stock", "vanilla", "greedy"}:
                 raise PlayTraceError("unknown decision source")
+            if (
+                "selection" in event
+                and event["source"] in {"network", "greedy"}
+                and not event["selection"]["enabled"]
+            ):
+                raise PlayTraceError("network source contradicts disabled selection")
             for field in ("error", "stage"):
                 if field in event and not isinstance(event[field], str):
                     raise PlayTraceError("invalid diagnostic label")
@@ -446,6 +499,15 @@ def timeline(match_id: str, trace: dict[str, Any]) -> str:
             text = f"{seat}: {event['choice']} (hidden selection omitted)"
         elif kind == "decision_source":
             text = f"AI source: {event['source']}"
+            if selection := event.get("selection"):
+                labels = {0: "Stock", 1: "Easy", 2: "Medium", 3: "Hard"}
+                text += (
+                    f" | {selection['mode']}, opponent {selection['opponent'] or 'unspecified'}"
+                    f", requested {labels[selection['requested_tier']]}"
+                    f", effective {labels[selection['effective_tier']]}"
+                )
+                if selection["checkpoint_sha256"]:
+                    text += f", model {selection['checkpoint_sha256'][:12]}"
             if "error" in event:
                 text += f" | {event.get('stage', 'policy')}: {event['error']}"
         elif kind == "match_end":

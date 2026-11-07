@@ -158,6 +158,92 @@ class Fixture(unittest.TestCase):
         )
 
 
+class RunningGameTests(Fixture):
+    def test_windows_reads_names_and_blocks_game_and_launcher_but_not_steam(self):
+        output = (
+            '"Steam.exe","12","Console","1","1,000 K"\r\n'
+            '"WITCHER3.EXE","13","Console","1","2,000 K"\r\n'
+            '"REDlauncher.exe","14","Console","1","3,000 K"\r\n'
+        )
+        with (
+            patch.object(install_mod.platform, "system", return_value="Windows"),
+            patch.object(
+                install_mod.subprocess,
+                "run",
+                return_value=SimpleNamespace(returncode=0, stdout=output),
+            ) as run,
+        ):
+            self.assertEqual(
+                install_mod.running_game_processes(),
+                ["REDlauncher.exe", "WITCHER3.EXE"],
+            )
+        self.assertEqual(run.call_args.args[0], ["tasklist", "/FO", "CSV", "/NH"])
+
+    def test_linux_reads_executable_names_and_recognizes_truncated_launcher(self):
+        with (
+            patch.object(install_mod.platform, "system", return_value="Linux"),
+            patch.object(
+                install_mod.subprocess,
+                "run",
+                return_value=SimpleNamespace(
+                    returncode=0,
+                    stdout="steam\n/usr/bin/witcher3.exe\nREDprelauncher.\n",
+                ),
+            ),
+        ):
+            self.assertEqual(
+                install_mod.running_game_processes(),
+                ["REDprelauncher.", "witcher3.exe"],
+            )
+
+    def test_unreadable_or_malformed_process_list_does_not_allow_mutation(self):
+        for system, output, result in [
+            ("Windows", "not a process table", 0),
+            ("Windows", "", 0),
+            ("Linux", "", 1),
+        ]:
+            with (
+                self.subTest(system=system, output=output),
+                patch.object(install_mod.platform, "system", return_value=system),
+                patch.object(
+                    install_mod.subprocess,
+                    "run",
+                    return_value=SimpleNamespace(returncode=result, stdout=output),
+                ),
+            ):
+                with self.assertRaises(ModInstallError):
+                    install_mod.require_game_stopped()
+
+    def test_running_game_blocks_install_before_any_backup_or_file_write(self):
+        game, pins = make_game(self.root)
+        package = self.package(pins)
+        before = snapshot(game)
+        with patch.object(
+            install_mod, "running_game_processes", return_value=["witcher3.exe"]
+        ):
+            with self.assertRaisesRegex(ModInstallError, "Close The Witcher 3"):
+                install_package(game, package_dir=package, runtime_dir=self.runtime)
+        self.assertEqual(snapshot(game), before)
+        self.assertFalse(self.runtime.exists())
+
+    def test_running_launcher_blocks_uninstall_before_cache_or_files_change(self):
+        game, pins = make_game(self.root)
+        package = self.package(pins)
+        with patch.object(install_mod, "running_game_processes", return_value=[]):
+            receipt = install_package(
+                game, package_dir=package, runtime_dir=self.runtime
+            )
+        before = snapshot(game)
+        receipt_bytes = receipt.read_bytes()
+        with patch.object(
+            install_mod, "running_game_processes", return_value=["REDlauncher.exe"]
+        ):
+            with self.assertRaisesRegex(ModInstallError, "REDlauncher"):
+                uninstall_package(game, runtime_dir=self.runtime)
+        self.assertEqual(snapshot(game), before)
+        self.assertEqual(receipt.read_bytes(), receipt_bytes)
+
+
 class PreflightTests(Fixture):
     def test_each_changed_pinned_file_is_named_and_install_leaves_the_tree_untouched(
         self,

@@ -126,7 +126,7 @@ def patch_sources(originals: dict[str, str]) -> dict[str, str]:
         "         this.cardManager.spawnLeaders();\n         "
         + _call(
             "GwaiPlayTrace.begin(this._gwaiSettings != null && this._gwaiSettings.trace === true,"
-            "this.cardManager,this,this.currentRound + 1)"
+            "this.cardManager,this,this.currentRound + 1,this.gwaiTraceSelection())"
         ),
         "match start",
     )
@@ -191,7 +191,9 @@ def patch_sources(originals: dict[str, str]) -> dict[str, str]:
         flow = _method_start(flow, method, f'GwaiPlayTrace.choice({seat},"{label}")')
     # Source/error reporting is independent of the optional on-screen banners.
     flow = _method_start(
-        flow, "gwaiRecordDecision", "GwaiPlayTrace.decision(kind,detail)"
+        flow,
+        "gwaiRecordDecision",
+        "GwaiPlayTrace.decision(kind,detail,this.gwaiTraceSelection())",
     )
     patched["GwintGameFlowController"] = flow
     for name, methods in {

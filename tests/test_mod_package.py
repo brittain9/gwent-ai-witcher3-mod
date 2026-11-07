@@ -265,7 +265,7 @@ class ModSourcePatchTests(unittest.TestCase):
             'cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiSettingsVersion", "3");',
             settings,
         )
-        self.assertIn('displayName="Enable trained AI"', menu)
+        self.assertIn('displayName="Enable AI"', menu)
         self.assertIn("FactsQueryLatestValue('gwent_difficulty')", settings)
 
     def test_manifest_ladder_links_three_policies_to_game_difficulty(self):
@@ -280,6 +280,10 @@ class ModSourcePatchTests(unittest.TestCase):
             with self.subTest(tier=name):
                 self.assertEqual(
                     ladder["tiers"][name]["game_difficulty"]["fact_value"], index
+                )
+                self.assertEqual(
+                    ladder["tiers"][name]["game_difficulty"]["label"],
+                    ("Easy", "Medium", "Hard")[index - 1],
                 )
                 self.assertEqual(
                     ladder["tiers"][name]["checkpoint_sha256"],

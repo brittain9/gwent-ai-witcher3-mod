@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import hashlib
 import json
 import re
@@ -22,63 +21,12 @@ from learning.encoding import (  # noqa: E402
     observation_size,
 )
 from learning.model import AtaraxosPolicyValue  # noqa: E402
+from scripts.policy_format import write_embed_header  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CHECKPOINT = PROJECT_ROOT / ".runtime/models/hard.pt"
 DEFAULT_CATALOG = PROJECT_ROOT / ".runtime/catalog.json"
 DEFAULT_OUTPUT = PROJECT_ROOT / ".runtime/policy-as3"
-AS3_CHUNK_CHARS = 48_000
-
-
-def _as3_array(values: list[int]) -> str:
-    return "[" + ",".join(str(value) for value in values) + "]"
-
-
-def _write_embed_header(
-    path: Path, payload: bytes, metadata: dict[str, object], class_name: str
-) -> None:
-    encoded = base64.b64encode(payload).decode("ascii")
-    chunks = [
-        encoded[start : start + AS3_CHUNK_CHARS]
-        for start in range(0, len(encoded), AS3_CHUNK_CHARS)
-    ]
-    offsets = metadata["offsets"]
-    card_ids = metadata["card_ids"]
-    card_effects = metadata["card_effects"]
-    lines = [
-        f"internal class {class_name}",
-        "{",
-        "   public static const EMBEDDED:Boolean = true;",
-        f'   public static const CHECKPOINT_SHA256:String = "{metadata["checkpoint_sha256"]}";',
-        f"   public static const UPDATE_COUNT:int = {metadata['update_count']};",
-        f'   public static const EXPORT_SHA256:String = "{metadata["export_sha256"]}";',
-        f'   public static const CATALOG_SHA256:String = "{metadata["catalog_sha256"]}";',
-        f"   public static const WEIGHT_COUNT:int = {metadata['parameter_count']};",
-        f"   public static const OBSERVATION_SIZE:int = {metadata['observation_size']};",
-        f"   public static const CARD_COUNT:int = {metadata['card_count']};",
-        f"   public static const WIDTH:int = {metadata['width']};",
-        f"   public static const BLOCKS:int = {metadata['blocks']};",
-        "   public static const OFFSETS:Object = {",
-    ]
-    offset_items = list(offsets.items())
-    for index, (name, offset) in enumerate(offset_items):
-        suffix = "," if index + 1 < len(offset_items) else ""
-        lines.append(f'      "{name}":{offset}{suffix}')
-    lines.extend(
-        ["   };", f"   public static const CARD_IDS:Array = {_as3_array(card_ids)};"]
-    )
-    lines.append(
-        "   public static const CARD_EFFECTS:Array = ["
-        + ",".join(_as3_array(effects) for effects in card_effects)
-        + "];"
-    )
-    lines.append("   public static const BASE64:Array = [")
-    lines.extend(
-        f'      "{chunk}"' + ("," if index + 1 < len(chunks) else "")
-        for index, chunk in enumerate(chunks)
-    )
-    lines.extend(["   ];", "}", ""])
-    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def export(
@@ -184,7 +132,7 @@ def export(
     (output_dir / "metadata.json").write_text(
         json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
     )
-    _write_embed_header(output_dir / f"{class_name}.as", payload, metadata, class_name)
+    write_embed_header(output_dir / f"{class_name}.as", payload, metadata, class_name)
     return metadata
 
 

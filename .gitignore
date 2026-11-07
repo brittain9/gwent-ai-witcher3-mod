@@ -2,9 +2,9 @@
 AGENTS.md
 CLAUDE.md
 .private/
-.local/
+/.local
 .runtime/
-.venv/
+/.venv
 __pycache__/
 *.py[cod]
 .ruff_cache/
@@ -23,3 +23,6 @@ mod/ai/node/fixtures.jsonl
 *.bundle
 *.store
 target/
+
+# Downloaded inference bundle used by source builds
+policies/

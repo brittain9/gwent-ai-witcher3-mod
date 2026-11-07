@@ -156,6 +156,50 @@ function OnConfigUI()
     wrappedMethod();
 }
 
+function GwaiNameOptions(entries : CScriptedFlashArray, groupID : int) : void
+{
+    var index : int;
+    var childIndex : int;
+    var entry : CScriptedFlashObject;
+    var children : CScriptedFlashArray;
+    var child : CScriptedFlashObject;
+    if (!entries || groupID < 0)
+    {
+        return;
+    }
+    for (index = 0; index < entries.GetLength(); index += 1)
+    {
+        entry = entries.GetElementFlashObject(index);
+        if (entry)
+        {
+            children = entry.GetMemberFlashArray("subElements");
+            if (children && entry.GetMemberFlashString("id") == "mainmenu_gwent")
+            {
+                for (childIndex = 0; childIndex < children.GetLength(); childIndex += 1)
+                {
+                    child = children.GetElementFlashObject(childIndex);
+                    if (child && child.GetMemberFlashInt("groupID") == groupID)
+                    {
+                        entry.SetMemberFlashString("label", "Gwent: A Worthy Opponent");
+                        entry.SetMemberFlashString("listTitle", "Gwent: A Worthy Opponent");
+                    }
+                }
+            }
+            GwaiNameOptions(children, groupID);
+        }
+    }
+}
+
+@wrapMethod(CR4IngameMenu)
+protected function showOptionsPanel() : void
+{
+    var entries : CScriptedFlashArray;
+    wrappedMethod();
+    entries = IngameMenu_FillOptionsSubMenuData(m_flashValueStorage, isMainMenu);
+    GwaiNameOptions(entries, theGame.GetInGameConfigWrapper().GetGroupIdx("W3GwentAI"));
+    m_flashValueStorage.SetFlashArray("ingamemenu.options.entries", entries);
+}
+
 // Use the game's test-match route, without entering an NPC's quest or wager.
 // The deck builder keeps the player's existing collection and selected deck.
 @wrapMethod(CR4IngameMenu)
@@ -178,7 +222,7 @@ function OnOptionValueChanged(groupId : int, optionName : name, optionValue : st
         cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiDevReport", "false");
         if (optionValue == "true" || optionValue == "1")
         {
-            theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent AI verification", GwaiVerificationText(), false, UDB_Ok);
+            theGame.GetGuiManager().ShowUserDialogAdv(0, "Gwent: A Worthy Opponent", GwaiVerificationText(), false, UDB_Ok);
         }
         return true;
     }
@@ -314,7 +358,7 @@ function OnConfigUI()
         policyDifficulty = gwintManager.gwaiDevTier;
     }
     deckName = "";
-    if (practice || GwaiSettingsToggleOn("GwaiStory") || GwaiLabToggleOn("GwaiStats"))
+    if (practice || GwaiSettingsToggleOn("GwaiStory") || GwaiLabToggleOn("GwaiStats") || GwaiSettingsToggleOn("GwaiTrace"))
     {
         deck = gwintManager.GetCurrentAIDeck();
         deckName = NameToString(deck.deckName);
@@ -347,11 +391,30 @@ function OnConfigUI()
 function GwaiDiagnosticsInitialize() : void
 {
     var cfg : CInGameConfigWrapper = theGame.GetInGameConfigWrapper();
-    var policyTier : int = theGame.GetGwintManager().gwaiDevTier;
-    if (policyTier < 1 || policyTier > 3)
+    var practice : bool = theGame.GetGwintManager().gwaiDevActive;
+    var enabled : bool = GwaiSettingsEnabled();
+    var policyTier : int = FactsQueryLatestValue('gwent_difficulty');
+    var matchMode : string = "story";
+    var opponent : string = "";
+    var deck : SDeckDefinition;
+    if (policyTier < 1) { policyTier = 1; }
+    if (policyTier > 3) { policyTier = 3; }
+    if (practice)
     {
-        policyTier = 3;
+        matchMode = "practice";
+        opponent = theGame.GetGwintManager().gwaiDevLabel;
+        enabled = enabled && theGame.GetGwintManager().gwaiDevAI == 2;
+        policyTier = theGame.GetGwintManager().gwaiDevTier;
+        if (policyTier < 1 || policyTier > 3) { policyTier = 3; }
     }
+    else
+    {
+        deck = theGame.GetGwintManager().GetCurrentAIDeck();
+        opponent = NameToString(deck.deckName);
+    }
+    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "enabled", "false");
+    if (enabled) { cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "enabled", "true"); }
+    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "match_mode", matchMode);
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "network", "0");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "greedy", "0");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "vanilla", "0");
@@ -359,11 +422,18 @@ function GwaiDiagnosticsInitialize() : void
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "first_error", "");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "last_error", "");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "vanilla_difficulty", IntToString(FactsQueryLatestValue('gwent_difficulty')));
-    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "build", "0.1.0-preview");
+    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "build", "0.1.0");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "practice", IntToString(theGame.GetGwintManager().gwaiDevAI));
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "policy_tier", IntToString(policyTier));
-    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "opponent", theGame.GetGwintManager().gwaiDevLabel);
+    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "opponent", opponent);
     theGame.SaveUserSettings();
+}
+
+function GwaiDifficultyLabel(tier : int) : string
+{
+    if (tier <= 1) { return "Easy"; }
+    if (tier == 2) { return "Medium"; }
+    return "Hard";
 }
 
 function GwaiVerificationText() : string
@@ -373,18 +443,20 @@ function GwaiVerificationText() : string
     var stock : int = StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "stock"), 0);
     var vanilla : int = StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "vanilla"), 0);
     var greedy : int = StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "greedy"), 0);
-    var mode : string = cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "practice");
-    var selected : string = "Normal NPC settings";
+    var selected : string = "Stock game AI";
     var status : string = "No network move recorded";
     var error : string = cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "first_error");
     var text : string;
-    if (mode == "1") { selected = "Stock game AI"; }
-    if (mode == "2") { selected = "Trained AI, tier " + cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "policy_tier"); }
+    if (cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "enabled") == "true")
+    {
+        selected = "Trained AI (" + GwaiDifficultyLabel(StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "policy_tier"), 3)) + ")";
+    }
     if (stock > 0 && network == 0 && vanilla == 0 && greedy == 0) { status = "Stock AI only"; }
     if (network > 0) { status = "Network used"; }
     if (network > 0 && (vanilla > 0 || greedy > 0)) { status = "Network used, with fallbacks"; }
     if (network + stock + vanilla + greedy == 0) { status = "No decisions recorded yet"; }
-    text = status + "\nSelected: " + selected;
+    text = status + "\nRequested: " + selected;
+    text += "\nMatch: " + cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "match_mode");
     text += "\nOpponent: " + cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "opponent");
     text += "\nNetwork choices: " + IntToString(network) + "; selected stock: " + IntToString(stock);
     text += "\nVanilla fallbacks: " + IntToString(vanilla) + "; simple-policy fallbacks: " + IntToString(greedy);

@@ -56,7 +56,7 @@ def helper_javascript() -> str:
     body = re.sub(r"\b(\w+)\s*:\s*\*", r"\1", body)
     body = body.replace(":Vector.<CardInstance>", "")
     body = re.sub(
-        r"\b(\w+)\s*:\s*(?:Vector\.<CardInstance>|CardTransaction|CardInstance|CardManager|GwintGameFlowController|GwintRoundResult|Boolean|String|Object|Number|Array|int|Error)\b",
+        r"\b(\w+)\s*:\s*(?:Vector\.<CardInstance>|CardTransaction|CardInstance|CardManager|GwintGameFlowController|GwintRoundResult|Boolean|String|Object|Number|Array|int|Error)\b(?!\s*\()",
         r"\1",
         body,
     )
@@ -216,7 +216,13 @@ begin(false,null,null,1); actionStarted(1,null); actionCommitted(); stable(null,
 decision('network','play PRIVATE-CHOICE network 1ms'); roundComplete(0);
 assert.equal(events.length,0); assert.equal(calls.length,0);
 begin(true,manager,flow,1);
-decision('network','play PRIVATE-CHOICE network 1ms');
+const selection={enabled:true,requested_tier:2,effective_tier:3,mode:'story',opponent:'Lambert',
+ npc_difficulty:2,checkpoint_sha256:'a'.repeat(64),weights_sha256:'b'.repeat(64),secret:'PRIVATE-HAND'};
+decision('network','play PRIVATE-CHOICE network 1ms',selection);
+assert.equal(events.at(-1).selection.effective_tier,3);
+assert.equal(events.at(-1).selection.requested_tier,2);
+assert.equal(events.at(-1).selection.checkpoint_sha256,'a'.repeat(64));
+assert.equal(events.at(-1).selection.secret,undefined);
 decision('vanilla','vocabulary failed: TypeError: Error #1009 PRIVATE-CHOICE');
 const card={instanceId:20,templateId:100,templateRef:{title:'Scorch'},owningPlayer:1,listsPlayer:1,getTotalPower(){return 0}};
 const transaction={sourceCardInstanceRef:card,targetCardInstanceRef:null,targetSlotID:-1,targetPlayerID:-1};
@@ -254,6 +260,10 @@ console.log(JSON.stringify(completed));
 """.replace("HELPER", helper_javascript())
         events = json.loads(run_node(harness))
         validate_events(events, "test-build", "final")
+        selected = next(event for event in events if "selection" in event)
+        selected["selection"]["hand"] = ["hidden"]
+        with self.assertRaisesRegex(PlayTraceError, "unexpected fields"):
+            validate_events(events, "test-build", "final")
 
     def test_sink_flushes_every_event_retains_interrupted_matches_and_never_reuses_keys(
         self,

@@ -32,7 +32,7 @@ FEATURES: dict[str, dict[str, Any]] = {
         "label": "Stronger story opponents",
         "information": "the opponent deck's name, sent by the game's scripts; the AI keeps its fair seat view",
         "network": "none extra: it only picks the tier",
-        "shows": "tournaments and quest opponents play Hard, other players at least Normal; never below your own setting",
+        "shows": "tournaments and quest opponents play Hard, other players at least Medium; never below your own setting",
     },
     "meter": {
         "group": "lab",
@@ -78,14 +78,12 @@ AS3_FLAGS = {
     "stats": "stats",
 }
 
-# The human seat's readings (coach, post-game card, blunder alert) use the Hard network on every
-# tier: in calibration the Easy network's reading rose by 3.6 points a step on its own picks, so
-# use a consistent reading network so changes remain comparable.
+# Assistance uses the Hard value head on every difficulty so its estimates
+# remain comparable when the opponent policy changes.
 READING_TIER = 3
 
-# The reading network is decoded from the coin toss on its own timer, one of its 221 base64 chunks
-# (48,000 characters) per tick, so no tick holds the whole decode (about 410 ms in V8, more in
-# Scaleform). The readings stay silent until it is done.
+# Decode assistance weights a chunk per timer tick and keep readings silent
+# until loading completes.
 LOADER_TICK_MS = 20
 LOADER_CHUNKS_PER_TICK = 1
 
@@ -94,10 +92,8 @@ STATS_OUTCOMES = ("won", "lost", "drawn")
 
 MAX_RECORDS = 64
 CARD_MIN_DROP = 0.05
-# scripts/calibrate_fun_drops.py, 4,000 games a pairing, the Hard network reading seat 0: a fall of
-# 20 points to the next decision follows 2.5-2.7% of the network's own picks and 2.5-3.2% of
-# second-best moves, so the alert is rare on sound play; it also fires on only 6-12% of forced
-# mid-match passes, because much of a pass's cost shows later than the next decision.
+# Alert on a large drop in the value head's estimate between decision points.
+# The estimate describes the policy's continuation, rather than optimal play.
 BLUNDER_DROP = 0.20
 
 STORY_TIER_BY_CATEGORY = {"tournament": 3, "named": 3, "generic": 2}
@@ -203,7 +199,7 @@ def deck_label(deck: str) -> str:
             return f"the {faction} tournament deck"
         if kind == "Tournament2":
             return f"the second {faction} tournament deck"
-        return f"a {faction} player ({kind.lower()})"
+        return f"a {faction} player ({'medium' if kind == 'Normal' else kind.lower()})"
     return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", deck)
 
 

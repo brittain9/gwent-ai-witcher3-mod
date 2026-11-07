@@ -1,20 +1,20 @@
 # Notice
 
-The MIT license covers this project's original code and documentation, except
+The MIT license covers this project's original code, documentation and the
+inference parameters included in the player download, except
 where a file states other terms. It does not cover The Witcher 3, its assets,
 card text or data, shipped bytecode, or source recovered from that bytecode.
 Those materials remain with their respective rights holders.
 
-This source distribution excludes extracted game resources, generated card catalogs,
-decompiled game source, patched game binaries and trained model checkpoints.
-The build tools read an installed copy of the game and create derived files
-locally. A compatible checkpoint is a separate required build input; no model
-download or redistribution terms are provided by this source distribution.
+The setup tools read an installed copy of the game and create the catalog,
+decompiled classes and modified game screen locally. Learned inference
+parameters contain the network's numeric tensors and architecture metadata;
+their card vocabulary and effect tables are generated from the local game.
 
-Locally generated model exports can contain game-derived metadata, and a
-locally generated mod package contains a modified game resource. Neither
-becomes MIT-licensed merely because these tools produced it. This source
-license does not authorize redistribution of third-party game material.
+Locally generated model headers contain game-derived metadata, and a locally
+generated mod package contains a modified game resource. Neither becomes
+MIT-licensed merely because these tools produced it. This license does not
+authorize redistribution of third-party game material.
 
 JPEXS Free Flash Decompiler, Python, PyTorch, NumPy, Node.js, Java and other
 external tools and dependencies retain their own licenses. They are not
