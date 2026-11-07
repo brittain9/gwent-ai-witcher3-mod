@@ -6,15 +6,20 @@ where a file states other terms. It does not cover The Witcher 3, its assets,
 card text or data, shipped bytecode, or source recovered from that bytecode.
 Those materials remain with their respective rights holders.
 
-The setup tools read an installed copy of the game and create the catalog,
-decompiled classes and modified game screen locally. Learned inference
-parameters contain the network's numeric tensors and architecture metadata;
-their card vocabulary and effect tables are generated from the local game.
+The source build tools read an installed copy of the game and create the catalog,
+decompiled classes and modified game screen locally. Prebuilt player packages
+include the modified Gwent screen, the trained policies and original integration
+scripts. The modified screen includes CD PROJEKT RED material, which remains
+under its respective terms and is not covered by this project's MIT license.
+Learned inference parameters contain the network's numeric tensors and
+architecture metadata; their card vocabulary and effect tables are derived
+from the compatible game.
 
 Locally generated model headers contain game-derived metadata, and a locally
 generated mod package contains a modified game resource. Neither becomes
-MIT-licensed merely because these tools produced it. This license does not
-authorize redistribution of third-party game material.
+MIT-licensed merely because these tools produced it. Rights to third-party
+game material are governed by the applicable game terms and
+[CD PROJEKT RED's fan-content guidelines](https://www.cdprojektred.com/en/fan-content).
 
 JPEXS Free Flash Decompiler, Python, PyTorch, NumPy, Node.js, Java and other
 external tools and dependencies retain their own licenses. They are not

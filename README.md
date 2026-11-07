@@ -81,13 +81,13 @@ receipt and rollback backups.
 
 - **Enable AI** selects the trained opponent in both story and practice matches.
   Turn it off to use the stock opponent.
-- The mod has **Easy, Medium and Hard** policies. Story matches follow the
-  game's Gwent difficulty; its middle setting may be labeled Normal.
-- Practice lets you choose an opponent and AI difficulty separately, using
-  your existing collection. Native NPC deck selection stays with the game.
+- **Gameplay > Gwent difficulty** selects the trained policy for both story
+  and practice matches. Easy, Normal and Hard select the Easy, Medium and
+  Hard policies respectively.
+- Practice lets you choose an opponent, using your existing collection.
+  Native NPC deck selection stays with the game.
 - Moves run when computation finishes, with no artificial thinking delay.
-- Coaching, analysis and **Stronger story opponents** are optional and off
-  by default. Troubleshooting controls are grouped at the end of the menu.
+- The mod menu contains the AI switch, practice controls and troubleshooting.
 
 The network sees its own hand, public cards, scores and card counts. It does
 not read your hidden hand or either deck's order. Difficulty selects different

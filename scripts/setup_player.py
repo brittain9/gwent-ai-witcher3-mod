@@ -235,7 +235,7 @@ def download_file(url: str, target: Path) -> None:
     if urllib.parse.urlparse(url).scheme != "https":
         raise SetupError("Tool downloads require HTTPS")
     request = urllib.request.Request(
-        url, headers={"User-Agent": "Gwent-Trained-Opponents/0.1.1"}
+        url, headers={"User-Agent": "Gwent-Trained-Opponents/0.1.2"}
     )
     try:
         with (

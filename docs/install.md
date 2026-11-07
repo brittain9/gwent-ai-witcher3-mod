@@ -58,20 +58,18 @@ compilation fails. Load a save and open
 | Control | Effect |
 |---|---|
 | Enable AI | Trained AI when on, stock AI when off, for story and practice |
-| Gameplay > Gwent difficulty | Chooses native NPC deck level and story policy; Medium corresponds to the game's middle setting |
+| Gameplay > Gwent difficulty | The game's existing setting chooses native NPC deck level and the policy for both story and practice; Normal selects the Medium policy |
 | Practice opponent | Chooses the native opponent collection for practice |
-| Practice AI difficulty | Easy, Medium or Hard, independently of native deck level |
 | Start practice match | Button that opens deck selection from a loaded game's pause menu, outside combat and dialogue |
-| Stronger story opponents | Optional minimum policy tiers for named/tournament and generic opponents; never lowers the selected tier |
 
 Practice uses your current collection and restores its temporary manager,
 result and tutorial state on completion or cancellation. It does not grant an
 NPC quest reward or wager. Native achievement callbacks remain enabled;
 actual achievement delivery has not been verified.
 
-Coaching and analysis controls are optional and off by default. The win-chance
-meter shows the AI's own estimate. There is no think-time scale or added wait;
-loading, computation, game animations and banners still take real time.
+The player mod has no coaching, hints, win-chance meter or postgame analysis.
+There is no think-time scale or added wait; loading, computation, game
+animations and banners still take real time.
 
 ## Troubleshooting
 

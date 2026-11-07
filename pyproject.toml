@@ -1,6 +1,6 @@
 [project]
 name = "witcher3-gwent-ai"
-version = "0.1.1"
+version = "0.1.2"
 description = "Trained AI opponent and source build tools for Witcher 3 Gwent"
 license = "MIT"
 requires-python = ">=3.12"

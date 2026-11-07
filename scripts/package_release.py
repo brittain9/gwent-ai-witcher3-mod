@@ -21,7 +21,7 @@ except ModuleNotFoundError:
 
 ROOT = Path(__file__).resolve().parents[1]
 FORMAT = "witcher3-player-release-v1"
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 SOURCE_FILES = (
     "README.md",
     "CHANGELOG.md",

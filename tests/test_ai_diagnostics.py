@@ -41,7 +41,7 @@ for(const enabled of [false,true]) for(const mode of [1,2]) for(const tier of [-
  GetGwintManager(){return manager},SaveUserSettings(){}},IntToString:String,FactsQueryLatestValue(){return tier},GwaiGwentDifficulty(){return Math.max(1,Math.min(3,tier))},GwaiSettingsEnabled(){return enabled},NameToString:String};
  new Function('env','with(env){'+body+'}')(env);
  assert.equal(saved.policy_tier,String(Math.max(1,Math.min(3,tier))));
- assert.equal(saved.build,'0.1.1');assert.equal(saved.vanilla_difficulty,String(tier));
+ assert.equal(saved.build,'0.1.2');assert.equal(saved.vanilla_difficulty,String(tier));
  assert.equal(saved.enabled,String(enabled&&mode===2));assert.equal(saved.match_mode,'practice');
 }
 """.replace("BODY", json.dumps(body))
@@ -162,7 +162,7 @@ flow._gwaiSettings.practice = true;
 flow.mcMessageQueue.PushMessage = () => { throw new Error('banner failed'); };
 new Function('env', 'with(env){' + bodies.stock + '}').call(flow, env);
 assert.equal(saved.stock, '3'); // Optional UI cannot interrupt the stock decision path.
-Object.assign(saved, { build:'0.1.1',practice: '2', enabled:'true', policy_tier: '3', opponent: 'Scoia tournament' });
+Object.assign(saved, { build:'0.1.2',practice: '2', enabled:'true', policy_tier: '3', opponent: 'Scoia tournament' });
 const reportEnv = { ...sinkEnv };
 reportEnv.GwaiDifficultyLabel = tier=>new Function('tier',bodies.difficulty)(tier);
 reportEnv.GwaiSettingsEnabled=()=>true;reportEnv.GwaiGwentDifficulty=()=>3;reportEnv.GwaiSettingsToggleOn=()=>false;
@@ -239,7 +239,7 @@ assert.ok(report.includes('Gwent difficulty: Medium (game setting)'));
 assert.ok(report.includes('Latest recorded match<br>No match recorded yet.'));
 assert.ok(!report.includes('Stock game AI'));assert.ok(!report.includes('Opponent:'));
 assert.ok(!report.includes('\\n'));
-Object.assign(sections.W3GwentAIDiagnostics,{build:'0.1.1',enabled:'false',policy_tier:'1',match_mode:'story',
+Object.assign(sections.W3GwentAIDiagnostics,{build:'0.1.2',enabled:'false',policy_tier:'1',match_mode:'story',
 opponent:'<font color="red">Lambert & friends</font>',network:'0',stock:'3',vanilla:'1',greedy:'0',first_error:'bad <tag> & input'});
 report=run('GwaiVerificationText');
 assert.ok(report.includes('AI: Trained network'));assert.ok(report.includes('Requested AI: Stock game AI'));

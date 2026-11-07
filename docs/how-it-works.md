@@ -32,9 +32,10 @@ then the highest-rated legal action within that group. The chosen action goes
 through the game's native transaction and effect path. There is no artificial
 pause after inference; loading, computation and presentation still take time.
 
-The native Gwent difficulty selects the NPC's deck level and the story policy.
-Practice can choose a trained policy separately. Optional stronger-story
-settings can raise a policy tier without changing the NPC collection.
+The game's existing Gwent difficulty setting selects the NPC's deck level and
+the trained policy for both story and practice. Easy, Normal and Hard select
+the Easy, Medium and Hard policies respectively. The mod has no separate
+difficulty or stronger-opponent override.
 
 ## When a decision fails
 

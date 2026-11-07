@@ -415,7 +415,7 @@ function GwaiDiagnosticsInitialize() : void
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "first_error", "");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "last_error", "");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "vanilla_difficulty", IntToString(FactsQueryLatestValue('gwent_difficulty')));
-    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "build", "0.1.1");
+    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "build", "0.1.2");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "practice", IntToString(theGame.GetGwintManager().gwaiDevAI));
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "policy_tier", IntToString(policyTier));
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "opponent", opponent);
