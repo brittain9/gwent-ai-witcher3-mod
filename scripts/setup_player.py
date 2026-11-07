@@ -499,6 +499,7 @@ def _installer():
 
 
 def _managed_install(root: Path, game_dir: Path) -> str | None:
+    game_dir = game_dir.expanduser().resolve()
     receipt_path = root / ".runtime/mod-install-receipt.json"
     if not receipt_path.exists():
         return None

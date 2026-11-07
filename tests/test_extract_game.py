@@ -7,10 +7,15 @@ import sys
 import tempfile
 import unittest
 import zlib
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import extract_game as extractor
+
+
+class WindowsManifestReferences(type(Path())):
+    def relative_to(self, *args, **kwargs):
+        return PureWindowsPath(super().relative_to(*args, **kwargs))
 
 
 def bundle_entry(
@@ -195,7 +200,7 @@ class ExtractionTests(unittest.TestCase):
                 ],
             )
 
-            output = root / "out"
+            output = WindowsManifestReferences(root / "out")
             manifest = extractor.extract(root / "game", output)
             extracted_xml = output / xml_name
             extracted_redswf = output / "gameplay/gui_new/swf/gwint/gwint_game.redswf"
@@ -210,6 +215,11 @@ class ExtractionTests(unittest.TestCase):
             selected = {asset["output"] for asset in manifest["assets"]}
             self.assertIn(xml_name, selected)
             self.assertIn("gameplay/gui_new/swf/gwint/gwint_game.swf", selected)
+            for asset in manifest["assets"]:
+                self.assertNotIn("\\", asset["output"])
+                if "derived_from" in asset:
+                    self.assertNotIn("\\", asset["derived_from"])
+                    self.assertIn(asset["derived_from"], selected)
             self.assertEqual(
                 manifest["bundles"]["xml.bundle"]["sha256"],
                 hashlib.sha256((bundles / "xml.bundle").read_bytes()).hexdigest(),

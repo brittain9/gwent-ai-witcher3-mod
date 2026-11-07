@@ -278,7 +278,7 @@ def extract(game_dir: Path, output_dir: Path) -> dict[str, object]:
                 {
                     "source_bundle": bundle_name,
                     "source_member": entry.name,
-                    "output": str(output_path.relative_to(output_dir)),
+                    "output": output_path.relative_to(output_dir).as_posix(),
                     "size": len(resource),
                     "crc32": f"{entry.crc32:08x}",
                     "sha256": sha256(resource),
@@ -292,8 +292,8 @@ def extract(game_dir: Path, output_dir: Path) -> dict[str, object]:
                     {
                         "source_bundle": bundle_name,
                         "source_member": entry.name,
-                        "derived_from": str(output_path.relative_to(output_dir)),
-                        "output": str(swf_path.relative_to(output_dir)),
+                        "derived_from": output_path.relative_to(output_dir).as_posix(),
+                        "output": swf_path.relative_to(output_dir).as_posix(),
                         "format": "FWS",
                         "size": len(swf),
                         "sha256": sha256(swf),

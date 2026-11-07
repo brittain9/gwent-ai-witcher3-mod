@@ -4,10 +4,18 @@ import struct
 import sys
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import decompile_game
 from decompile_game import decompile
+
+
+class WindowsManifestReferences(type(Path())):
+    def relative_to(self, *args, **kwargs):
+        return PureWindowsPath(super().relative_to(*args, **kwargs))
+
 
 FAKE_JAVA = """
 from pathlib import Path
@@ -32,7 +40,10 @@ class DecompileArtifactTests(unittest.TestCase):
             jar.write_bytes(b"synthetic tool")
             fake.write_text(FAKE_JAVA)
             output = root / "as3"
-            manifest = decompile(source, jar, output, java=[sys.executable, str(fake)])
+            with patch.object(decompile_game, "Path", WindowsManifestReferences):
+                manifest = decompile(
+                    source, jar, output, java=[sys.executable, str(fake)]
+                )
             self.assertEqual(
                 manifest["source_swf_sha256"],
                 hashlib.sha256(source.read_bytes()).hexdigest(),
@@ -41,6 +52,7 @@ class DecompileArtifactTests(unittest.TestCase):
                 json.loads((output / "manifest.json").read_text()), manifest
             )
             for relative, expected in manifest["files"].items():
+                self.assertNotIn("\\", relative)
                 self.assertEqual(
                     hashlib.sha256((output / relative).read_bytes()).hexdigest(),
                     expected,

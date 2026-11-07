@@ -30,6 +30,7 @@ def run_node(source: str) -> str:
         [shutil.which("node"), "-e", source],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     if result.returncode:

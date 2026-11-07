@@ -84,7 +84,7 @@ def decompile(
         if file_hash(source) != source_hash or file_hash(jar) != tool_hash:
             raise ValueError("input SWF or decompiler changed during export")
         files = {
-            str(path.relative_to(exported)): file_hash(path)
+            path.relative_to(exported).as_posix(): file_hash(path)
             for path in sorted(package_dir.glob("*.as"))
         }
         manifest = {

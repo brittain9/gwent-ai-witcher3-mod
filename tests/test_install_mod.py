@@ -314,11 +314,31 @@ class PreflightTests(Fixture):
         (game / "mods/modSomethingElse/content").mkdir(parents=True)
         install_package(game, package_dir=package, runtime_dir=self.runtime)
         self.assertTrue((game / "mods/modW3GwentAI/content/blob0.bundle").is_file())
-        self.assertFalse((game / "Mods").exists())
+        self.assertEqual(
+            [path.name for path in game.iterdir() if path.name.casefold() == "mods"],
+            ["mods"],
+        )
         uninstall_package(game, runtime_dir=self.runtime)
-        (game / "Mods").mkdir()
-        with self.assertRaisesRegex(ModInstallError, "both Mods and mods exist"):
+        (game / "Mods").mkdir(exist_ok=True)
+        physical_names = {
+            path.name for path in game.iterdir() if path.name.casefold() == "mods"
+        }
+        if len(physical_names) == 2:
+            self.assertEqual(physical_names, {"Mods", "mods"})
+            with self.assertRaisesRegex(ModInstallError, "both Mods and mods exist"):
+                install_package(game, package_dir=package, runtime_dir=self.runtime)
+        else:
+            self.assertEqual(physical_names, {"mods"})
             install_package(game, package_dir=package, runtime_dir=self.runtime)
+            self.assertEqual(
+                [
+                    path.name
+                    for path in game.iterdir()
+                    if path.name.casefold() == "mods"
+                ],
+                ["mods"],
+            )
+            uninstall_package(game, runtime_dir=self.runtime)
 
     def test_a_copy_of_the_mod_installed_by_hand_is_refused(self) -> None:
         game, pins_path = make_game(self.root)

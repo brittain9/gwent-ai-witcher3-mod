@@ -152,6 +152,10 @@ class SetupFlowTests(unittest.TestCase):
             game = root / "game"
             path, receipt = self.managed_receipt(root, game)
             self.assertEqual(setup_player._managed_install(root, game), "modW3GwentAI")
+            self.assertEqual(
+                setup_player._managed_install(root, game / ".." / game.name),
+                "modW3GwentAI",
+            )
             receipt["files"][-1] = dict(receipt["files"][0])
             receipt["files"][-1]["path"] = receipt["files"][-1]["path"].replace(
                 "/", "\\"
