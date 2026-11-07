@@ -1,0 +1,110 @@
+{
+  "format": "witcher3-gwent-ai-game-pins-v1",
+  "target": {
+    "title": "The Witcher 3: Wild Hunt \u2014 Remastered",
+    "patch": "5.01",
+    "exe_version": "5.0.1048522",
+    "exe_p4cl": "13413172",
+    "launcher_edition": "remasteredEdition",
+    "renderer": "DirectX 12 (bin/x64_dx12; the install has no bin/x64)",
+    "steam_app": 292030,
+    "steam_build": 25773555,
+    "measured": "Steam/Proton compatibility inputs",
+    "dlc": "Hearts of Stone and Blood and Wine are merged into content/content0 (no dlc/ folder); the Skellige cards are in the base def_gwint_cards_final.xml"
+  },
+  "bundle_members": [
+    {
+      "bundle": "content/content0/bundles/r4gui.bundle",
+      "member": "gameplay\\gui_new\\swf\\gwint\\gwint_game.redswf",
+      "size": 12284472,
+      "sha256": "aeb1255be5a4d218bf41a7630dd27e4b25b32936c0f06055fa77e7aec4d5664e",
+      "role": "replaced",
+      "why": "The mod's blob0.bundle overrides this Gwent screen; its patched SWF was built from exactly these bytes."
+    },
+    {
+      "bundle": "content/content0/bundles/xml.bundle",
+      "member": "gameplay\\items\\def_gwint_cards_final.xml",
+      "size": 92721,
+      "sha256": "087e6c5e2e3b27d964245363ebe638e9d12660c52eea5ab8cebd0d82376b7bc5",
+      "role": "encoded",
+      "why": "The network's card catalog was built from these card definitions."
+    },
+    {
+      "bundle": "content/content0/bundles/xml.bundle",
+      "member": "gameplay\\items\\def_gwint_battle_king_cards.xml",
+      "size": 9110,
+      "sha256": "0e95fb1552fff6e18992ee027dcadca902cf2570c1cce787ed9d9af9197bd9c2",
+      "role": "encoded",
+      "why": "The network's card catalog was built from these leader definitions."
+    },
+    {
+      "bundle": "content/content0/bundles/xml.bundle",
+      "member": "gameplay\\items\\def_gwint_decks.xml",
+      "size": 172844,
+      "sha256": "13871ae2817bfe3ba5ee86dc842f0488f88bd71386a9140d6a7fb841002a96b2",
+      "role": "encoded",
+      "why": "The tiers follow the vanilla NPC decks defined here."
+    }
+  ],
+  "files": [
+    {
+      "path": "content/content0/scripts/game/gui/menus/gwintGameMenu.ws",
+      "size": 12008,
+      "sha256": "22f69ba95c6ec7c1970bc68567ad4dc1e1db203ef3473c99efe3164d22c14448",
+      "role": "wrapped",
+      "why": "gwai_settings.ws wraps CR4GwintGameMenu.OnConfigUI; the probe and recorder add fields and events to this class."
+    },
+    {
+      "path": "content/content0/scripts/game/gui/main_menu/ingameMenu.ws",
+      "size": 163586,
+      "sha256": "fe051467b393dc3b0ac15dfdcf1d6064210853600cc254ba3fd20b32b1a6518e",
+      "role": "wrapped",
+      "why": "gwai_settings.ws wraps CR4IngameMenu.OnConfigUI."
+    },
+    {
+      "path": "content/content0/scripts/game/inGameConfigWrapper.ws",
+      "size": 7573,
+      "sha256": "7393bd3965a311789f3d57d954e7c64f1bdd7c87d3fe0d1539223438a9515202",
+      "role": "called",
+      "why": "The settings script reads and writes the Options > Mods values through CInGameConfigWrapper."
+    },
+    {
+      "path": "content/content0/scripts/game/facts.ws",
+      "size": 2302,
+      "sha256": "5dac2120120657b38e346612d4de48656ba107362c413c8076d3b493bfc85fe9",
+      "role": "called",
+      "why": "The settings script reads the game's Gwent difficulty through FactsQueryLatestValue."
+    },
+    {
+      "path": "content/content0/scripts/game/gui/menus/gwintManager.ws",
+      "size": 9806,
+      "sha256": "96ec97fb7379216bfa395d4c0dc3d2f26459b5b4e765c0eb8d88b55a148d77dc",
+      "role": "wrapped",
+      "why": "Practice snapshots and restores the manager fields through added methods."
+    },
+    {
+      "path": "content/content0/scripts/game/gui/menus/deckBuilderMenu.ws",
+      "size": 9320,
+      "sha256": "3de35416bb2fc7a5598f96925f022dd992c26c6cf499d5fa3e61306a49150a00",
+      "role": "wrapped",
+      "why": "Practice wraps CR4DeckBuilderMenu.OnClosingMenu to restore state on cancellation."
+    },
+    {
+      "path": "content/content0/scripts/game/gui/r4guimanager.ws",
+      "size": 51562,
+      "sha256": "7da7120dd93b1321de8e7331cdf3ac739164733bd384fc59be875efd74a45c9d",
+      "role": "called",
+      "why": "The verification menu calls CR4GuiManager.ShowUserDialogAdv with literal title and text."
+    }
+  ],
+  "bundles_seen": {
+    "r4gui.bundle": {
+      "size": 77460016,
+      "sha256": "0b2b46dede35e4f9c992ec088474cbed59840e27c569b1d2adf413e9d8890edd"
+    },
+    "xml.bundle": {
+      "size": 850704,
+      "sha256": "f2a432f31e5f7b3c8ff1d772cde852b5c2a7d336c40e3c8d525c56defc673765"
+    }
+  }
+}

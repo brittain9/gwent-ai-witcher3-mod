@@ -1,0 +1,24 @@
+[project]
+name = "witcher3-gwent-ai"
+version = "0.1.0"
+description = "Trained AI opponent and source build tools for Witcher 3 Gwent"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.4",
+    "torch>=2.14.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+# Direct CLI entry points and synthetic tests set their import roots first.
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]
+"tests/*.py" = ["E402"]

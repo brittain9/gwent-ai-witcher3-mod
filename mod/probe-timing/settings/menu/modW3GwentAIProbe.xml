@@ -1,0 +1,156 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<UserConfig>
+    <Group id="W3GwentAI" displayName="mainmenu_mods.mainmenu_gwent">
+        <VisibleVars>
+            <Var id="GwaiEnabled" displayName="Enable trained AI" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiSignal" displayName="[Debug] Show decision source" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiTrace" displayName="[Debug] Record play-by-play" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiPracticeHeader" displayName="Practice matches" displayType="SEPARATOR" tags="nonLocalizedName" />
+            <Var id="GwaiDevOpponent" displayName="Practice opponent / deck" displayType="OPTIONS" tags="nonLocalizedName;customNames;nonLocalized">
+                <OptionsArray>
+                    <Option id="0" displayName="Generic: Northern Realms">
+                        <Entry varId="GwaiDevOpponent" value="0" />
+                    </Option>
+                    <Option id="1" displayName="Generic: Nilfgaard">
+                        <Entry varId="GwaiDevOpponent" value="1" />
+                    </Option>
+                    <Option id="2" displayName="Generic: Scoia'tael">
+                        <Entry varId="GwaiDevOpponent" value="2" />
+                    </Option>
+                    <Option id="3" displayName="Generic: Monsters">
+                        <Entry varId="GwaiDevOpponent" value="3" />
+                    </Option>
+                    <Option id="4" displayName="Generic: Skellige">
+                        <Entry varId="GwaiDevOpponent" value="4" />
+                    </Option>
+                    <Option id="5" displayName="Bloody Baron">
+                        <Entry varId="GwaiDevOpponent" value="5" />
+                    </Option>
+                    <Option id="6" displayName="Boat Builder">
+                        <Entry varId="GwaiDevOpponent" value="6" />
+                    </Option>
+                    <Option id="7" displayName="White Orchard scholar">
+                        <Entry varId="GwaiDevOpponent" value="7" />
+                    </Option>
+                    <Option id="8" displayName="Circus Gwent Addict">
+                        <Entry varId="GwaiDevOpponent" value="8" />
+                    </Option>
+                    <Option id="9" displayName="Crach">
+                        <Entry varId="GwaiDevOpponent" value="9" />
+                    </Option>
+                    <Option id="10" displayName="Crossroads Innkeeper">
+                        <Entry varId="GwaiDevOpponent" value="10" />
+                    </Option>
+                    <Option id="11" displayName="Dijkstra">
+                        <Entry varId="GwaiDevOpponent" value="11" />
+                    </Option>
+                    <Option id="12" displayName="Gambler">
+                        <Entry varId="GwaiDevOpponent" value="12" />
+                    </Option>
+                    <Option id="13" displayName="Gremista">
+                        <Entry varId="GwaiDevOpponent" value="13" />
+                    </Option>
+                    <Option id="14" displayName="Halflings">
+                        <Entry varId="GwaiDevOpponent" value="14" />
+                    </Option>
+                    <Option id="15" displayName="Hermit">
+                        <Entry varId="GwaiDevOpponent" value="15" />
+                    </Option>
+                    <Option id="16" displayName="Lambert">
+                        <Entry varId="GwaiDevOpponent" value="16" />
+                    </Option>
+                    <Option id="17" displayName="Madman Lugos">
+                        <Entry varId="GwaiDevOpponent" value="17" />
+                    </Option>
+                    <Option id="18" displayName="Marquise Serenity">
+                        <Entry varId="GwaiDevOpponent" value="18" />
+                    </Option>
+                    <Option id="19" displayName="Ermion">
+                        <Entry varId="GwaiDevOpponent" value="19" />
+                    </Option>
+                    <Option id="20" displayName="Olgierd">
+                        <Entry varId="GwaiDevOpponent" value="20" />
+                    </Option>
+                    <Option id="21" displayName="Olivier">
+                        <Entry varId="GwaiDevOpponent" value="21" />
+                    </Option>
+                    <Option id="22" displayName="Roche">
+                        <Entry varId="GwaiDevOpponent" value="22" />
+                    </Option>
+                    <Option id="23" displayName="Scoia'tael trader">
+                        <Entry varId="GwaiDevOpponent" value="23" />
+                    </Option>
+                    <Option id="24" displayName="Shani">
+                        <Entry varId="GwaiDevOpponent" value="24" />
+                    </Option>
+                    <Option id="25" displayName="Sjusta">
+                        <Entry varId="GwaiDevOpponent" value="25" />
+                    </Option>
+                    <Option id="26" displayName="Stjepan">
+                        <Entry varId="GwaiDevOpponent" value="26" />
+                    </Option>
+                    <Option id="27" displayName="Thaler">
+                        <Entry varId="GwaiDevOpponent" value="27" />
+                    </Option>
+                    <Option id="28" displayName="Vimme Vivaldi">
+                        <Entry varId="GwaiDevOpponent" value="28" />
+                    </Option>
+                    <Option id="29" displayName="Zoltan">
+                        <Entry varId="GwaiDevOpponent" value="29" />
+                    </Option>
+                    <Option id="30" displayName="the Northern Realms tournament deck">
+                        <Entry varId="GwaiDevOpponent" value="30" />
+                    </Option>
+                    <Option id="31" displayName="the Nilfgaard tournament deck">
+                        <Entry varId="GwaiDevOpponent" value="31" />
+                    </Option>
+                    <Option id="32" displayName="the Scoia'tael tournament deck">
+                        <Entry varId="GwaiDevOpponent" value="32" />
+                    </Option>
+                    <Option id="33" displayName="the Monsters tournament deck">
+                        <Entry varId="GwaiDevOpponent" value="33" />
+                    </Option>
+                    <Option id="34" displayName="the second Scoia'tael tournament deck">
+                        <Entry varId="GwaiDevOpponent" value="34" />
+                    </Option>
+                    <Option id="35" displayName="the second Monsters tournament deck">
+                        <Entry varId="GwaiDevOpponent" value="35" />
+                    </Option>
+                    <Option id="36" displayName="the second Northern Realms tournament deck">
+                        <Entry varId="GwaiDevOpponent" value="36" />
+                    </Option>
+                    <Option id="37" displayName="the second Nilfgaard tournament deck">
+                        <Entry varId="GwaiDevOpponent" value="37" />
+                    </Option>
+                    <Option id="38" displayName="the second Skellige tournament deck">
+                        <Entry varId="GwaiDevOpponent" value="38" />
+                    </Option>
+                </OptionsArray>
+            </Var>
+            <Var id="GwaiDevTier" displayName="Practice AI difficulty" displayType="OPTIONS" tags="nonLocalizedName;customNames;nonLocalized">
+                <OptionsArray>
+                    <Option id="0" displayName="Easy">
+                        <Entry varId="GwaiDevTier" value="0" />
+                    </Option>
+                    <Option id="1" displayName="Normal">
+                        <Entry varId="GwaiDevTier" value="1" />
+                    </Option>
+                    <Option id="2" displayName="Hard">
+                        <Entry varId="GwaiDevTier" value="2" />
+                    </Option>
+                </OptionsArray>
+            </Var>
+            <Var id="GwaiDevStart" displayName="Start practice match (loaded game only)" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiDevReport" displayName="Show AI verification (current / latest match)" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiAssistanceHeader" displayName="Optional assistance" displayType="SEPARATOR" tags="nonLocalizedName" />
+            <Var id="GwaiCoach" displayName="Coach hint on your turn" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiStory" displayName="Stronger story opponents" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiLabHeader" displayName="Analysis tools" displayType="SEPARATOR" tags="nonLocalizedName" />
+            <Var id="GwaiLab" displayName="Lab mode (analysis tools)" displayType="TOGGLE" tags="nonLocalizedName" />
+            <Var id="GwaiMeter" displayName="Win-chance meter (the AI's reading)" displayType="TOGGLE" tags="indent;nonLocalizedName" />
+            <Var id="GwaiPostGame" displayName="Post-game coach card" displayType="TOGGLE" tags="indent;nonLocalizedName" />
+            <Var id="GwaiBlunder" displayName="Blunder alert" displayType="TOGGLE" tags="indent;nonLocalizedName" />
+            <Var id="GwaiStats" displayName="Match stats" displayType="TOGGLE" tags="indent;nonLocalizedName" />
+        </VisibleVars>
+    </Group>
+</UserConfig>

@@ -1,0 +1,25 @@
+# Local instructions and private records
+AGENTS.md
+CLAUDE.md
+.private/
+.local/
+.runtime/
+.venv/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+# Client-derived references and game-position corpora
+engine/
+engine-py/
+data/
+w3gwent/stock_ai_reference.py
+w3gwent/stock_npc_decks.py
+mod/ai/node/fixtures.jsonl
+# Build artifacts
+*.pt
+*.bin
+*.swf
+*.redswf
+*.bundle
+*.store
+target/
