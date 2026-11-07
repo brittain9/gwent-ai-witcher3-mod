@@ -77,11 +77,11 @@ loading, computation, game animations and banners still take real time.
 
 Open the troubleshooting group at the end of the mod menu:
 
-- **Show AI verification** identifies the requested selection and observed
+- **Show AI status (current / latest match)** identifies the requested selection and observed
   source counts, even when banners are off.
 - **Show decision source** displays `network`, `greedy-fallback` or a stock
   handoff. A fallback means the trained policy did not complete that decision.
-- **Record play-by-play** saves public events locally. New records include
+- **Record public play-by-play** saves public events locally. New records include
   mode, opponent identifier, requested/effective tier and model hashes.
 
 A missing banner alone does not prove that the mod is absent. The main switch

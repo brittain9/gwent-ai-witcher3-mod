@@ -53,16 +53,18 @@ resource set is from the Remastered edition; executable patch labels alone
 do not determine compatibility. Classic 1.32 is unsupported. Another mod that
 replaces the Gwent screen can conflict.
 
-Trained play has been observed on Windows and Linux through Steam/Proton.
+The preceding preview was played on Windows and Linux through Steam/Proton.
+This release's tested platforms and build identity are listed in its
+[release notes](https://github.com/brittain9/gwent-ai-witcher3-mod/releases/latest).
 The AI is fallible; there is no claim of optimal play or a calibrated human
-win rate. A strange-looking move needs the complete decision context to judge.
+win rate.
 Your collection and the NPC's native deck still affect each match.
 
 ## Diagnose a problem
 
-**Show AI verification** reports the requested selection and recorded decision
+**Show AI status (current / latest match)** reports the requested selection and recorded decision
 sources. **Show decision source** displays network and fallback messages.
-**Record play-by-play** saves public actions, settled boards and match results
+**Record public play-by-play** saves public actions, settled boards and match results
 locally, including the selected tier and model identity in new traces.
 
 Both debug controls are off by default. Recording excludes hidden hands, deck

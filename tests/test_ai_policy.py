@@ -15,13 +15,13 @@ BUILD_MANIFEST = ROOT / ".runtime/mod-build/manifest.json"
 
 @unittest.skipUnless(NODE, "Node.js is required for fixture policy replay")
 class ModPolicyReplayTests(unittest.TestCase):
-    def test_engine_fixtures_replay_through_the_as3_network_source(self) -> None:
+    def test_checkpoint_references_replay_through_the_as3_network_source(self) -> None:
         if not BUILD_MANIFEST.is_file():
             self.skipTest("build the mod before replaying its checkpoint fixtures")
         manifest = json.loads(BUILD_MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest.get("status"), "offline_compiled_and_export_verified")
         policy_export = manifest["policy_exports"][0]
-        export_dir = ROOT / ".runtime/policy-as3" / policy_export["checkpoint_sha256"]
+        export_dir = Path(policy_export["export_directory"])
         fixture_path = Path(policy_export["export_gate"]["path"])
         result = subprocess.run(
             [
@@ -30,7 +30,7 @@ class ModPolicyReplayTests(unittest.TestCase):
                 "--network",
                 str(ROOT / "mod/ai/as3/GwaiNetPolicy.as"),
                 "--metadata",
-                str(export_dir / "metadata.json"),
+                policy_export["export_gate"]["metadata_path"],
                 "--weights",
                 str(export_dir / "policy.f32.bin"),
                 "--record",
@@ -62,7 +62,7 @@ class ModPolicyReplayTests(unittest.TestCase):
             self.skipTest("build the mod before checking the Easy sampler")
         manifest = json.loads(BUILD_MANIFEST.read_text(encoding="utf-8"))
         policy_export = manifest["policy_exports"][0]
-        export_dir = ROOT / ".runtime/policy-as3" / policy_export["checkpoint_sha256"]
+        export_dir = Path(policy_export["export_directory"])
         fixture_path = Path(policy_export["export_gate"]["path"])
         seed = 20261026
         draws = 512
@@ -73,7 +73,7 @@ class ModPolicyReplayTests(unittest.TestCase):
                 "--network",
                 str(ROOT / "mod/ai/as3/GwaiNetPolicy.as"),
                 "--metadata",
-                str(export_dir / "metadata.json"),
+                policy_export["export_gate"]["metadata_path"],
                 "--weights",
                 str(export_dir / "policy.f32.bin"),
                 "--record",
