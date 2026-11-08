@@ -4,14 +4,18 @@
 
 ### Changed
 
-- The game's Gwent difficulty selects the trained policy for both story and
+- The game's Gwent difficulty controls move selection for both story and
   practice matches. Removed the separate practice difficulty and stronger-story
   overrides.
 - Reduced the player menu to the AI switch, practice controls and troubleshooting.
   Removed coaching, hints, the win-chance meter and postgame analysis.
 - Generate the settings menu inside the mod's scripts. The player mod no longer
   needs a separate settings XML in the game's configuration directory.
-- The trained policies and inference calculations are unchanged.
+- Use one shared model for all difficulties, with different move-selection
+  temperatures. The model weights remain unchanged.
+- Pass when the visible position guarantees an immediate match win.
+- Improve model loading, decision ownership and compiled numeric checks.
+- Keep player builds separate from opt-in diagnostic builds. Lookahead is off.
 
 ## 0.1.1 — 2026-11-07
 

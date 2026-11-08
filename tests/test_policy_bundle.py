@@ -50,6 +50,7 @@ class PolicyBundleTests(unittest.TestCase):
         return {
             "schema": 1,
             "observation_schema_id": "witcher3-gwent-seat-view-v1",
+            "observation_profile_id": policy_format.FULL_FACTION_PROFILE,
             "action_schema_id": "witcher3-gwent-factorized-action-v1",
             "checkpoint_sha256": "a" * 64,
             "update_count": 7,
@@ -192,6 +193,76 @@ class PolicyBundleTests(unittest.TestCase):
         self.assertEqual(prepared["normal"].metadata["width"], 3)
         self.assertEqual(prepared["normal"].metadata["blocks"], 2)
         self.assertEqual(prepared["normal"].metadata["card_ids"], [9001, 9002])
+
+    def test_legacy_bundle_keeps_generic_profile_and_unknown_profile_is_refused(self):
+        bundle = self.create()
+        self.mutate_manifest(
+            bundle,
+            lambda manifest: [
+                entry.pop("observation_profile_id")
+                for entry in manifest["tiers"].values()
+            ],
+        )
+        loaded = policy_bundle.load_bundle(bundle)
+        self.assertTrue(
+            all(
+                item["observation_profile_id"] == policy_format.FULL_FACTION_PROFILE
+                for item in loaded.metadata.values()
+            )
+        )
+        self.mutate_manifest(
+            bundle,
+            lambda manifest: manifest["tiers"]["hard"].update(
+                observation_profile_id="unrecognized-v1"
+            ),
+        )
+        with self.assertRaisesRegex(policy_bundle.PolicyBundleError, "profile"):
+            policy_bundle.load_bundle(bundle)
+
+    def test_explicit_audited_profile_migration_preserves_payload_and_source(self):
+        self.metadata.pop("observation_profile_id")
+        self.metadata["checkpoint_sha256"] = next(
+            iter(policy_format.FACTION_UNKNOWN_CHECKPOINTS)
+        )
+        self.write_export()
+        before = (self.export_dir / "metadata.json").read_bytes()
+        destination = self.root / "migrated"
+        policy_bundle.create_bundle(
+            {tier: self.export_dir for tier in policy_bundle.TIERS},
+            destination,
+            observation_profile_id=policy_format.UNKNOWN_FACTION_PROFILE,
+        )
+        prepared = policy_bundle.materialize(
+            destination, self.catalog_path, self.root / "migrated-exports"
+        )
+        for item in prepared.values():
+            self.assertEqual(
+                item.metadata["observation_profile_id"],
+                policy_format.UNKNOWN_FACTION_PROFILE,
+            )
+            self.assertEqual(item.weights_path.read_bytes(), self.payload)
+        self.assertEqual((self.export_dir / "metadata.json").read_bytes(), before)
+        self.metadata["checkpoint_sha256"] = "0" * 64
+        self.write_export()
+        refused = self.root / "unaudited"
+        with self.assertRaisesRegex(policy_bundle.PolicyBundleError, "not audited"):
+            policy_bundle.create_bundle(
+                {tier: self.export_dir for tier in policy_bundle.TIERS},
+                refused,
+                observation_profile_id=policy_format.UNKNOWN_FACTION_PROFILE,
+            )
+        self.assertFalse(refused.exists())
+
+    def test_same_checkpoint_cannot_name_different_profiles(self):
+        bundle = self.create()
+        self.mutate_manifest(
+            bundle,
+            lambda manifest: manifest["tiers"]["hard"].update(
+                observation_profile_id=policy_format.UNKNOWN_FACTION_PROFILE
+            ),
+        )
+        with self.assertRaisesRegex(policy_bundle.PolicyBundleError, "inconsistent"):
+            policy_bundle.load_bundle(bundle)
 
     def test_existing_output_is_preserved(self) -> None:
         bundle = self.create()

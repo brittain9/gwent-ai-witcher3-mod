@@ -6,6 +6,17 @@ const crypto = require("node:crypto");
 const path = require("node:path");
 const vm = require("node:vm");
 
+function observationProfile(metadata) {
+  // Older exports used the generic encoder, including supplied faction fields.
+  const profile = Object.hasOwn(metadata, "observation_profile_id")
+    ? metadata.observation_profile_id
+    : "full-faction-v1";
+  if (profile !== "full-faction-v1" && profile !== "faction-unknown-v1") {
+    throw new Error("unsupported model observation profile");
+  }
+  return profile;
+}
+
 function classBody(source, className = "GwaiPolicyCore") {
   const start = source.indexOf(`internal class ${className}`);
   if (start < 0) throw new Error(`${className} class declaration is missing`);
@@ -24,13 +35,22 @@ function loadPolicyCore(corePath) {
   const bytes = corePath === "-" ? fs.readFileSync(0) : fs.readFileSync(corePath);
   const source = bytes.toString("utf8");
   const digest = crypto.createHash("sha256").update(bytes).digest("hex");
-  const body = classBody(source).replace(/public function\s+GwaiPolicyCore\s*\(\s*\)\s*\{\s*super\(\);\s*\}/, "");
+  const body = classBody(source).replace(
+    /public function\s+GwaiPolicyCore\s*\(\s*\)\s*\{\s*super\(\);\s*\}/,
+    "",
+  );
 
   const javascript = body
-    .replace(/public static function\s+(\w+)\(([^)]*)\)\s*:\s*(?:Object|Number|Boolean|int)\s*\{/g, "function $1($2) {")
+    .replace(
+      /public static function\s+(\w+)\(([^)]*)\)\s*:\s*(?:Object|Number|Boolean|int)\s*\{/g,
+      "function $1($2) {",
+    )
     .replace(/\bcatch\s*\((\w+)\s*:\s*(?:Error|Object)\s*\)/g, "catch ($1)")
     .replace(/\b([A-Za-z_$][\w$]*)\s*:\s*(?:Object|Array|Number|String|Boolean|int|uint)\b/g, "$1")
-    .replace(/\bvar\s+([A-Za-z_$][\w$]*)\s*:\s*(?:Object|Array|Number|String|Boolean|int|uint)\b/g, "var $1");
+    .replace(
+      /\bvar\s+([A-Za-z_$][\w$]*)\s*:\s*(?:Object|Array|Number|String|Boolean|int|uint)\b/g,
+      "var $1",
+    );
   const moduleShim = { exports: {} };
   vm.runInNewContext(`${javascript}\nmodule.exports = { decide: decide };`, { module: moduleShim });
   return { decide: moduleShim.exports.decide, digest };
@@ -42,8 +62,12 @@ function moveKey(move) {
 }
 
 function replay(inputPath, decide, limit) {
-  const lines = fs.readFileSync(inputPath, "utf8").split(/\r?\n/).filter(Boolean)
-    .map((line) => JSON.parse(line)).filter((record) => !record.fixture_schema);
+  const lines = fs
+    .readFileSync(inputPath, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .filter((record) => !record.fixture_schema);
   let agreement = 0;
   for (let index = 0; index < lines.length; index++) {
     const record = lines[index];
@@ -54,24 +78,56 @@ function replay(inputPath, decide, limit) {
   return { agreement, total: lines.length };
 }
 
-function loadNetworkPolicy(source, coreSource, metadata, weights, random = Math.random, easyTemperature = 0, probeTiming = false) {
+function loadNetworkPolicy(
+  source,
+  coreSource,
+  metadata,
+  weights,
+  random = Math.random,
+  easyTemperature = 0,
+  probeTiming = false,
+  diagnosticHooks = null,
+) {
   const networkBody = classBody(source, "GwaiNetPolicy")
+    .replace(/private static const\s+(\w+)\s*:\s*Boolean\s*=\s*(true|false)\s*;/g, "const $1 = $2;")
     .replace(/private static (?:const|var)\s+\w+:[\s\S]*?;/g, "")
     .replace(/public function\s+GwaiNetPolicy\s*\(\s*\)\s*\{\s*super\(\);\s*\}/, "")
-    .replace(/(?:public|private) static function\s+(\w+)\(([^)]*)\)\s*:\s*(?:Object|Array|Number|String|Boolean|int|void|Vector\.<Number>)\s*\{/g, "function $1($2) {")
+    .replace(
+      /(?:public|private) static function\s+(\w+)\(([^)]*)\)\s*:\s*(?:Object|Array|Number|String|Boolean|int|void|Vector\.<Number>)\s*\{/g,
+      "function $1($2) {",
+    )
     .replace(/\bcatch\s*\((\w+)\s*:\s*(?:Error|Object)\s*\)/g, "catch ($1)")
-    .replace(/:\s*(?:Vector\.<Number>|Object|Array|Number|Boolean|String|int|uint)(?=[,\s)=;])/g, "")
+    .replace(
+      /:\s*(?:Vector\.<Number>|Object|Array|Number|Boolean|String|int|uint)(?=[,\s)=;])/g,
+      "",
+    )
     .replace(/\bint\s*\(/g, "Math.trunc(")
     .replace(/new Vector\.<Number>\(([^,]+),\s*true\)/g, "new Array($1).fill(0)");
-  const networkWithClassName = networkBody.replace(/\bfunction decide\(/, "function networkDecide(");
+  const networkWithClassName = networkBody.replace(
+    /\bfunction decide\(/,
+    "function networkDecide(",
+  );
   const coreBody = classBody(coreSource, "GwaiPolicyCore")
     .replace(/public function\s+GwaiPolicyCore\s*\(\s*\)\s*\{\s*super\(\);\s*\}/, "")
-    .replace(/public static function\s+(\w+)\(([^)]*)\)\s*:\s*(?:Object|Number|Boolean|int)\s*\{/g, (_match, name, args) => "function " + name + "(" + args + ") {")
-    .replace(/catch\s*\((\w+)\s*:\s*(?:Error|Object)\s*\)/g, (_match, name) => "catch (" + name + ")")
-    .replace(/\b([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?:Object|Array|Number|String|Boolean|int|uint)\b/g, "$1")
-    .replace(/\bvar\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?:Object|Array|Number|String|Boolean|int|uint)\b/g, "var $1");
+    .replace(
+      /public static function\s+(\w+)\(([^)]*)\)\s*:\s*(?:Object|Number|Boolean|int)\s*\{/g,
+      (_match, name, args) => "function " + name + "(" + args + ") {",
+    )
+    .replace(
+      /catch\s*\((\w+)\s*:\s*(?:Error|Object)\s*\)/g,
+      (_match, name) => "catch (" + name + ")",
+    )
+    .replace(
+      /\b([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?:Object|Array|Number|String|Boolean|int|uint)\b/g,
+      "$1",
+    )
+    .replace(
+      /\bvar\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?:Object|Array|Number|String|Boolean|int|uint)\b/g,
+      "var $1",
+    );
   const weightBytes = Buffer.alloc(weights.length * 4);
-  for (let index = 0; index < weights.length; index++) weightBytes.writeFloatLE(weights[index], index * 4);
+  for (let index = 0; index < weights.length; index++)
+    weightBytes.writeFloatLE(weights[index], index * 4);
   const encodedWeights = weightBytes.toString("base64");
   const data = {
     EMBEDDED: true,
@@ -81,6 +137,7 @@ function loadNetworkPolicy(source, coreSource, metadata, weights, random = Math.
     CATALOG_SHA256: metadata.catalog_sha256,
     WEIGHT_COUNT: metadata.parameter_count,
     OBSERVATION_SIZE: metadata.observation_size,
+    OBSERVATION_PROFILE_ID: observationProfile(metadata),
     CARD_COUNT: metadata.card_count,
     WIDTH: metadata.width,
     BLOCKS: metadata.blocks,
@@ -88,18 +145,41 @@ function loadNetworkPolicy(source, coreSource, metadata, weights, random = Math.
     CARD_IDS: metadata.card_ids,
     CARD_EFFECTS: metadata.card_effects,
     BASE64: Array.from({ length: Math.ceil(encodedWeights.length / 48000) }, (_, index) =>
-      encodedWeights.slice(index * 48000, (index + 1) * 48000)),
+      encodedWeights.slice(index * 48000, (index + 1) * 48000),
+    ),
   };
   let weightLoadCalls = 0;
   let loadedWeights = null;
   const math = Object.create(Math);
   math.random = random;
+  if (
+    diagnosticHooks != null &&
+    ["beginDecision", "record", "random", "failedAttempt"].some(
+      (name) => typeof diagnosticHooks[name] !== "function",
+    )
+  ) {
+    throw new Error(
+      "diagnostic hooks require beginDecision, record, random and failedAttempt functions",
+    );
+  }
+  const diagnostics = diagnosticHooks ?? {
+    beginDecision() {},
+    record() {},
+    failedAttempt() {},
+    random() {
+      return math.random();
+    },
+  };
   const timing = createTimingProbe(probeTiming);
   const float32Buffer = {
     value: 0,
     position: 0,
-    writeFloat(value) { this.value = Math.fround(value); },
-    readFloat() { return this.value; },
+    writeFloat(value) {
+      this.value = Math.fround(value);
+    },
+    readFloat() {
+      return this.value;
+    },
   };
   const moduleShim = { exports: {} };
   const context = {
@@ -107,6 +187,7 @@ function loadNetworkPolicy(source, coreSource, metadata, weights, random = Math.
     Math: math,
     getTimer: () => Number(process.hrtime.bigint()) / 1e6,
     GwaiTimingProbe: timing,
+    GwaiPolicyDiagnostic: diagnostics,
     FLOAT32_BUFFER: float32Buffer,
     Number,
     String,
@@ -126,16 +207,23 @@ function loadNetworkPolicy(source, coreSource, metadata, weights, random = Math.
     GwaiNetWeights: {
       load(requestedData) {
         weightLoadCalls++;
-        if (requestedData !== data || !requestedData.EMBEDDED || !Array.isArray(requestedData.BASE64) ||
-          requestedData.BASE64.length === 0 || requestedData.WEIGHT_COUNT !== weights.length ||
-          requestedData.CHECKPOINT_SHA256 !== metadata.checkpoint_sha256) {
+        if (
+          requestedData !== data ||
+          !requestedData.EMBEDDED ||
+          !Array.isArray(requestedData.BASE64) ||
+          requestedData.BASE64.length === 0 ||
+          requestedData.WEIGHT_COUNT !== weights.length ||
+          requestedData.CHECKPOINT_SHA256 !== metadata.checkpoint_sha256
+        ) {
           throw new Error("invalid embedded checkpoint data");
         }
         if (loadedWeights != null) return loadedWeights;
         const embeddedBytes = Buffer.from(requestedData.BASE64.join(""), "base64");
         const embeddedDigest = crypto.createHash("sha256").update(embeddedBytes).digest("hex");
-        if (embeddedBytes.length !== requestedData.WEIGHT_COUNT * 4 ||
-          embeddedDigest !== requestedData.EXPORT_SHA256) {
+        if (
+          embeddedBytes.length !== requestedData.WEIGHT_COUNT * 4 ||
+          embeddedDigest !== requestedData.EXPORT_SHA256
+        ) {
           throw new Error("embedded checkpoint bytes do not match their header");
         }
         loadedWeights = weights;
@@ -146,13 +234,35 @@ function loadNetworkPolicy(source, coreSource, metadata, weights, random = Math.
     ROWS: ["melee", "ranged", "siege"],
     ACTION_KINDS: ["pass", "play", "leader", "mulligan", "decline_mulligan", "choice"],
     ZONE_NAMES: [
-      "own_hand", "own_melee", "own_ranged", "own_siege",
-      "opponent_melee", "opponent_ranged", "opponent_siege",
-      "own_graveyard", "opponent_graveyard", "weather", "own_leader", "opponent_leader",
-      "own_melee_modifier", "own_ranged_modifier", "own_siege_modifier",
-      "opponent_melee_modifier", "opponent_ranged_modifier", "opponent_siege_modifier",
+      "own_hand",
+      "own_melee",
+      "own_ranged",
+      "own_siege",
+      "opponent_melee",
+      "opponent_ranged",
+      "opponent_siege",
+      "own_graveyard",
+      "opponent_graveyard",
+      "weather",
+      "own_leader",
+      "opponent_leader",
+      "own_melee_modifier",
+      "own_ranged_modifier",
+      "own_siege_modifier",
+      "opponent_melee_modifier",
+      "opponent_ranged_modifier",
+      "opponent_siege_modifier",
     ],
-    PENDING_KINDS: [null, "mulligan", "nurse", "leader_resurrect", "leader_weather", "leader_discard", "leader_pick", "coin_toss"],
+    PENDING_KINDS: [
+      null,
+      "mulligan",
+      "nurse",
+      "leader_resurrect",
+      "leader_weather",
+      "leader_discard",
+      "leader_pick",
+      "coin_toss",
+    ],
     EFFECT_COUNT: 45,
     GLOBAL_SIZE: 64,
     _lastWinChance: NaN,
@@ -164,7 +274,8 @@ function loadNetworkPolicy(source, coreSource, metadata, weights, random = Math.
       "\nGwaiNetPolicy.encodeObservation = encodeObservation;" +
       "\nGwaiNetPolicy.actionId = actionId;" +
       "\nGwaiNetPolicy.sampleLogit = sampleLogit;" +
-      "\n" + coreBody +
+      "\n" +
+      coreBody +
       "\nmodule.exports = { decide: decide, evaluate: evaluate, sampleLogit: sampleLogit," +
       " actionId: GwaiNetPolicy.actionId, encodeObservation: encodeObservation," +
       " insight: insight, lastWinChance: lastWinChance, unknownCards: unknownCards, actionFeature: actionFeature };",
@@ -175,7 +286,9 @@ function loadNetworkPolicy(source, coreSource, metadata, weights, random = Math.
     ...moduleShim.exports,
     weightLoadCalls: () => weightLoadCalls,
     embeddedData: data,
-    resetRandom: (seed) => { math.random = seededRandom(seed); },
+    resetRandom: (seed) => {
+      math.random = seededRandom(seed);
+    },
     timing: () => timing.summary(metadata.width),
   };
 }
@@ -256,26 +369,31 @@ function createTimingProbe(enabled) {
 
   function metric(values) {
     const sorted = values.slice().sort((left, right) => left - right);
-    const mean = sorted.length === 0
-      ? null
-      : sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
+    const mean =
+      sorted.length === 0 ? null : sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
     if (sorted.length === 0) return { samples: 0, mean_ms: mean, median_ms: null, p95_ms: null };
     const middle = Math.floor(sorted.length / 2);
-    const median = sorted.length % 2 === 0
-      ? (sorted[middle - 1] + sorted[middle]) / 2
-      : sorted[middle];
+    const median =
+      sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
     const p95 = sorted[Math.max(0, Math.ceil(0.95 * sorted.length) - 1)];
     return { samples: sorted.length, mean_ms: mean, median_ms: median, p95_ms: p95 };
   }
 
   return {
-    attach(policyFunctions) { policy = policyFunctions; },
+    attach(policyFunctions) {
+      policy = policyFunctions;
+    },
     measure(observation, legalActions, data, _realWeights, fullElapsed) {
       if (!enabled) return;
       if (policy == null) throw new Error("probe policy functions are not attached");
       for (const width of widths) modelFor(width, data);
       let started = process.hrtime.bigint();
-      policy.encodeObservation(observation, data.CARD_IDS, data.CARD_EFFECTS);
+      policy.encodeObservation(
+        observation,
+        data.CARD_IDS,
+        data.CARD_EFFECTS,
+        data.OBSERVATION_PROFILE_ID,
+      );
       samples.encoder.push(elapsed(started));
       samples.full.push(Number(fullElapsed));
       for (const width of widths) {
@@ -291,6 +409,7 @@ function createTimingProbe(enabled) {
           width,
           data.BLOCKS,
           0,
+          data.OBSERVATION_PROFILE_ID,
         );
         samples[String(width)].push(elapsed(started));
       }
@@ -332,17 +451,33 @@ function readWeights(weightsPath, parameterCount) {
     throw new Error(`weight blob has ${bytes.length} bytes; expected ${parameterCount * 4}`);
   }
   const weights = new Array(parameterCount);
-  for (let index = 0; index < parameterCount; index++) weights[index] = bytes.readFloatLE(index * 4);
+  for (let index = 0; index < parameterCount; index++)
+    weights[index] = bytes.readFloatLE(index * 4);
   return weights;
 }
 
 function float32Hash(values) {
   const bytes = Buffer.allocUnsafe(values.length * 4);
-  for (let index = 0; index < values.length; index++) bytes.writeFloatLE(Number(values[index]), index * 4);
+  for (let index = 0; index < values.length; index++)
+    bytes.writeFloatLE(Number(values[index]), index * 4);
   return crypto.createHash("sha256").update(bytes).digest("hex");
 }
 
-function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPath, tolerance, expectedDigest, positionLimit, samplerSeed, samplerDraws, easyTemperature, probeTiming, actionSequenceHash) {
+function replayNetwork(
+  inputPath,
+  networkPath,
+  corePath,
+  metadataPath,
+  weightsPath,
+  tolerance,
+  expectedDigest,
+  positionLimit,
+  samplerSeed,
+  samplerDraws,
+  easyTemperature,
+  probeTiming,
+  actionSequenceHash,
+) {
   const networkBytes = networkPath === "-" ? fs.readFileSync(0) : fs.readFileSync(networkPath);
   const networkSource = networkBytes.toString("utf8");
   const networkDigest = crypto.createHash("sha256").update(networkBytes).digest("hex");
@@ -367,7 +502,11 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
     probeTiming,
   );
   const evaluate = policy.evaluate;
-  const allRecords = fs.readFileSync(inputPath, "utf8").split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
+  const allRecords = fs
+    .readFileSync(inputPath, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
   const fixtureHeader = allRecords.find((record) => record.fixture_schema === 1) || null;
   if (fixtureHeader) {
     if (fixtureHeader.checkpoint_sha256 !== metadata.checkpoint_sha256) {
@@ -375,6 +514,9 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
     }
     if (fixtureHeader.catalog_sha256 !== metadata.catalog_sha256) {
       throw new Error("fixtures were generated from a different card catalog");
+    }
+    if (observationProfile(fixtureHeader) !== observationProfile(metadata)) {
+      throw new Error("fixtures were generated with a different observation profile");
     }
   }
   const fixtureLines = allRecords.filter((record) => !record.fixture_schema);
@@ -412,6 +554,8 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
       metadata.offsets,
       metadata.width,
       metadata.blocks,
+      0,
+      observationProfile(metadata),
     );
     durations.push(Number(process.hrtime.bigint() - started) / 1e6);
     const expected = record.expected;
@@ -435,7 +579,11 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
       const easyView = { ...view, policyFallback: false };
       const easyAction = policy.decide(easyView, record.legal_actions, 1);
       if (easyView.policyFallback === true) easyDecisionFallbacks++;
-      if (!record.legal_actions.some((action) => String(policy.actionId(action)) === String(policy.actionId(easyAction)))) {
+      if (
+        !record.legal_actions.some(
+          (action) => String(policy.actionId(action)) === String(policy.actionId(easyAction)),
+        )
+      ) {
         easyDecisionInvalids++;
       }
       easyDecisionTotal++;
@@ -443,7 +591,12 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
     if (actual.chosen_action_id === expected.action_id) agreement++;
     else {
       actionMismatches++;
-      errors.push({ index, cause: "chosen action differs", expected: expected.action_id, actual: actual.chosen_action_id });
+      errors.push({
+        index,
+        cause: "chosen action differs",
+        expected: expected.action_id,
+        actual: actual.chosen_action_id,
+      });
     }
     if (float32Hash(actual.observation) !== expected.observation_sha256) {
       observationMismatches++;
@@ -465,12 +618,18 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
         [insight.value, expected.value],
         [meterChance, expected.outcome_probabilities[2]],
         // The coach's number: winChanceOf(insight) reads outcome_probabilities[2].
-        [Array.isArray(insight.outcome_probabilities) ? insight.outcome_probabilities[2] : Number.NaN,
-          expected.outcome_probabilities[2]],
+        [
+          Array.isArray(insight.outcome_probabilities)
+            ? insight.outcome_probabilities[2]
+            : Number.NaN,
+          expected.outcome_probabilities[2],
+        ],
       ];
       const probabilities = actual.outcome_probabilities;
       if (!Array.isArray(probabilities) || probabilities.length !== 3) valueInvalid++;
-      else for (let item = 0; item < 3; item++) readings.push([probabilities[item], expected.outcome_probabilities[item]]);
+      else
+        for (let item = 0; item < 3; item++)
+          readings.push([probabilities[item], expected.outcome_probabilities[item]]);
       for (const [value, reference] of readings) {
         if (!Number.isFinite(Number(value))) {
           valueInvalid++;
@@ -483,7 +642,12 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
       const expectedValues = expected[field];
       const actualValues = actual[field];
       if (expectedValues.length !== actualValues.length) {
-        errors.push({ index, cause: `${field} length differs`, expected: expectedValues.length, actual: actualValues.length });
+        errors.push({
+          index,
+          cause: `${field} length differs`,
+          expected: expectedValues.length,
+          actual: actualValues.length,
+        });
         continue;
       }
       for (let item = 0; item < expectedValues.length; item++) {
@@ -496,8 +660,13 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
   }
   const sortedDurations = durations.slice().sort((left, right) => left - right);
   const median = sortedDurations[Math.floor(sortedDurations.length / 2)] || 0;
-  const p95 = sortedDurations[Math.min(sortedDurations.length - 1, Math.floor(sortedDurations.length * 0.95))] || 0;
-  const mean = durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : 0;
+  const p95 =
+    sortedDurations[
+      Math.min(sortedDurations.length - 1, Math.floor(sortedDurations.length * 0.95))
+    ] || 0;
+  const mean = durations.length
+    ? durations.reduce((sum, value) => sum + value, 0) / durations.length
+    : 0;
   const recordedEasyRandomDraws = easyRandomDraws;
   policy.resetRandom(samplerSeed ?? 1);
   const samplerDrawsResult = [];
@@ -524,7 +693,10 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
     valueMaxAbsError,
     insightTotal,
     insightAgreement,
-    valuePass: valueTotal === lines.length && valueInvalid === 0 && valueMaxAbsError <= tolerance &&
+    valuePass:
+      valueTotal === lines.length &&
+      valueInvalid === 0 &&
+      valueMaxAbsError <= tolerance &&
       insightAgreement === insightTotal,
     observationMismatches,
     actionEncodingMismatches,
@@ -540,7 +712,10 @@ function replayNetwork(inputPath, networkPath, corePath, metadataPath, weightsPa
     mismatches: errors.slice(0, 20),
   };
   if (actionSequenceHash) {
-    result.actionSequenceSha256 = crypto.createHash("sha256").update(actionIds.join("\n")).digest("hex");
+    result.actionSequenceSha256 = crypto
+      .createHash("sha256")
+      .update(actionIds.join("\n"))
+      .digest("hex");
   }
   if (probeTiming) {
     result.probeTiming = policy.timing();
@@ -572,30 +747,44 @@ function main() {
   for (let index = 2; index < process.argv.length; index++) {
     const argument = process.argv[index];
     if (argument === "--record") options.inputPath = path.resolve(process.argv[++index]);
-    else if (argument === "--core") options.corePath = process.argv[++index] === "-" ? "-" : path.resolve(process.argv[index]);
+    else if (argument === "--core")
+      options.corePath = process.argv[++index] === "-" ? "-" : path.resolve(process.argv[index]);
     else if (argument === "--network") {
       options.networkEnabled = true;
       options.networkPath = process.argv[++index] === "-" ? "-" : path.resolve(process.argv[index]);
-    }
-    else if (argument === "--metadata") options.metadataPath = path.resolve(process.argv[++index]);
+    } else if (argument === "--metadata")
+      options.metadataPath = path.resolve(process.argv[++index]);
     else if (argument === "--weights") options.weightsPath = path.resolve(process.argv[++index]);
     else if (argument === "--tolerance") options.tolerance = Number(process.argv[++index]);
     else if (argument === "--limit") options.limit = Number.parseInt(process.argv[++index], 10);
     else if (argument === "--expected-core-sha256") options.expectedDigest = process.argv[++index];
-    else if (argument === "--expected-network-sha256") options.expectedNetworkDigest = process.argv[++index];
-    else if (argument === "--positions") options.positions = Number.parseInt(process.argv[++index], 10);
-    else if (argument === "--sampler-seed") options.samplerSeed = Number.parseInt(process.argv[++index], 10);
-    else if (argument === "--sampler-draws") options.samplerDraws = Number.parseInt(process.argv[++index], 10);
-    else if (argument === "--easy-temperature") options.easyTemperature = Number(process.argv[++index]);
+    else if (argument === "--expected-network-sha256")
+      options.expectedNetworkDigest = process.argv[++index];
+    else if (argument === "--positions")
+      options.positions = Number.parseInt(process.argv[++index], 10);
+    else if (argument === "--sampler-seed")
+      options.samplerSeed = Number.parseInt(process.argv[++index], 10);
+    else if (argument === "--sampler-draws")
+      options.samplerDraws = Number.parseInt(process.argv[++index], 10);
+    else if (argument === "--easy-temperature")
+      options.easyTemperature = Number(process.argv[++index]);
     else if (argument === "--timing-only") options.timingOnly = true;
     else if (argument === "--probe-timing") options.probeTiming = true;
     else if (argument === "--action-sequence-hash") options.actionSequenceHash = true;
     else options.inputPath = path.resolve(argument);
   }
-  if (options.limit != null && (!Number.isInteger(options.limit) || options.limit < 1)) throw new Error("--limit must be a positive integer");
-  if (options.positions != null && (!Number.isInteger(options.positions) || options.positions < 1)) throw new Error("--positions must be a positive integer");
-  if (!Number.isInteger(options.samplerSeed) || !Number.isInteger(options.samplerDraws) || options.samplerDraws < 0) {
-    throw new Error("sampler seed must be an integer and sampler draws must be a non-negative integer");
+  if (options.limit != null && (!Number.isInteger(options.limit) || options.limit < 1))
+    throw new Error("--limit must be a positive integer");
+  if (options.positions != null && (!Number.isInteger(options.positions) || options.positions < 1))
+    throw new Error("--positions must be a positive integer");
+  if (
+    !Number.isInteger(options.samplerSeed) ||
+    !Number.isInteger(options.samplerDraws) ||
+    options.samplerDraws < 0
+  ) {
+    throw new Error(
+      "sampler seed must be an integer and sampler draws must be a non-negative integer",
+    );
   }
   if (!Number.isFinite(options.easyTemperature) || options.easyTemperature < 0) {
     throw new Error("Easy temperature must be finite and non-negative");
@@ -620,24 +809,27 @@ function main() {
       options.actionSequenceHash,
     );
     process.stdout.write(`${JSON.stringify(summary)}\n`);
-    if (!options.timingOnly && (
-      summary.agreement !== summary.total ||
-      summary.decisionAgreement !== summary.decisionTotal ||
-      summary.decisionFallbacks !== 0 ||
-      summary.easyDecisionFallbacks !== 0 ||
-      summary.easyDecisionInvalids !== 0 ||
-      summary.weightLoadCalls !== summary.decisionTotal + summary.easyDecisionTotal +
-        summary.insightTotal ||
-      !summary.valuePass ||
-      !summary.logitsPass ||
-      !summary.encoderPass
-    )) process.exitCode = 1;
+    if (
+      !options.timingOnly &&
+      (summary.agreement !== summary.total ||
+        summary.decisionAgreement !== summary.decisionTotal ||
+        summary.decisionFallbacks !== 0 ||
+        summary.easyDecisionFallbacks !== 0 ||
+        summary.easyDecisionInvalids !== 0 ||
+        summary.weightLoadCalls !==
+          summary.decisionTotal + summary.easyDecisionTotal + summary.insightTotal ||
+        !summary.valuePass ||
+        !summary.logitsPass ||
+        !summary.encoderPass)
+    )
+      process.exitCode = 1;
   } else {
-  const policy = loadPolicyCore(options.corePath);
-  if (options.expectedDigest && policy.digest !== options.expectedDigest) throw new Error("Node loaded different policy-core bytes than the exported SWF source");
-  const result = replay(options.inputPath, policy.decide, options.limit);
-  if (options.expectedDigest) result.coreSha256 = policy.digest;
-  process.stdout.write(`${JSON.stringify(result)}\n`);
+    const policy = loadPolicyCore(options.corePath);
+    if (options.expectedDigest && policy.digest !== options.expectedDigest)
+      throw new Error("Node loaded different policy-core bytes than the exported SWF source");
+    const result = replay(options.inputPath, policy.decide, options.limit);
+    if (options.expectedDigest) result.coreSha256 = policy.digest;
+    process.stdout.write(`${JSON.stringify(result)}\n`);
   }
 }
 

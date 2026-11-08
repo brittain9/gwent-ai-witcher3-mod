@@ -11,32 +11,29 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 
-try:
-    from scripts import (
-        build_probe,
-        cli_encoding,
-        compiled_policy,
-        mod_practice,
-        mod_trace,
-    )
-except ModuleNotFoundError:
-    import build_probe
-    import cli_encoding
-    import compiled_policy
-    import mod_practice
-    import mod_trace
-
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts import (
+    build_probe,
+    cli_encoding,
+    compiled_policy,
+    mod_diagnostic,
+    mod_practice,
+    mod_trace,
+)
+
 BUILD_ID = "0.1.2"
 AS3_DIR = ROOT / "mod/ai/as3"
 OUTPUT_DIR = ROOT / ".runtime/mod-build"
 RECORDER_OUTPUT_DIR = ROOT / ".runtime/mod-build-recorder"
 PROBE_OUTPUT_DIR = ROOT / ".runtime/mod-build-probe"
+DIAGNOSTIC_OUTPUT_DIR = ROOT / ".runtime/mod-build-diagnostic"
 POLICY_EXPORT_DIR = ROOT / ".runtime/policy-as3"
 POLICY_FIXTURE_DIR = ROOT / ".runtime/policy-as3-fixtures"
 DEFAULT_CHECKPOINT = ROOT / ".runtime/models/hard.pt"
@@ -601,7 +598,11 @@ def _append_internal_classes(source: str, class_sources: dict[str, str]) -> str:
         sorted(name for name in class_sources if name.startswith("GwaiNetWeightsData_"))
     )
     probe = ("GwaiTimingProbe",)
-    trace = ("GwaiPlayTrace",) if "GwaiPlayTrace" in class_sources else ()
+    trace = tuple(
+        name
+        for name in ("GwaiPlayTrace", "GwaiPolicyDiagnostic")
+        if name in class_sources
+    )
     plain_sources = set(class_sources) - set(trace)
     if plain_sources == set(base):
         names = base
@@ -1695,7 +1696,20 @@ def _prepare_policy_exports(
     *,
     action_sequence_hash: bool = False,
     policy_bundle_path: Path | None = None,
+    observation_profile_id: str | None = None,
 ) -> tuple[dict[str, str], dict[str, Any], dict[str, dict[str, Any]]]:
+    if observation_profile_id is not None:
+        if policy_bundle_path is not None or not re.fullmatch(
+            r"[a-z][a-z0-9-]{1,63}", observation_profile_id
+        ):
+            raise ModBuildError(
+                "observation profile must be a named checkpoint export; bundles own their profile"
+            )
+    profile_options = (
+        {"observation_profile_id": observation_profile_id}
+        if observation_profile_id is not None
+        else {}
+    )
     if policy_bundle_path is None:
         try:
             from scripts import create_policy_fixtures, export_policy_as3
@@ -1766,10 +1780,18 @@ def _prepare_policy_exports(
         else:
             checkpoint = tier_checkpoints[tier].expanduser().resolve()
             output_dir = POLICY_EXPORT_DIR / checkpoint_hash
+            fixture_name = checkpoint_hash
+            if observation_profile_id is not None:
+                output_dir = output_dir / observation_profile_id
+                fixture_name += "-" + observation_profile_id
             metadata = export_policy_as3.export(
-                checkpoint, catalog_path, output_dir, class_name=class_name
+                checkpoint,
+                catalog_path,
+                output_dir,
+                class_name=class_name,
+                **profile_options,
             )
-            fixture_path = POLICY_FIXTURE_DIR / f"{checkpoint_hash}.jsonl"
+            fixture_path = POLICY_FIXTURE_DIR / f"{fixture_name}.jsonl"
             fixture_summary = create_policy_fixtures.create_fixtures(
                 checkpoint_path=checkpoint,
                 catalog_path=catalog_path,
@@ -1777,6 +1799,7 @@ def _prepare_policy_exports(
                 count=200,
                 seed=20261026,
                 env_count=10,
+                **profile_options,
             )
             replay_metadata_path = output_dir / "metadata.json"
         command = [
@@ -1901,6 +1924,11 @@ def _prepare_policy_exports(
             "update_count": metadata_by_hash[tier_hashes[tier]]["update_count"],
             "export_sha256": metadata_by_hash[tier_hashes[tier]]["export_sha256"],
             "weights_blob_sha256": metadata_by_hash[tier_hashes[tier]]["export_sha256"],
+            "observation_profile_id": metadata_by_hash[tier_hashes[tier]].get(
+                "observation_profile_id", "full-faction-v1"
+            ),
+            "observation_size": metadata_by_hash[tier_hashes[tier]]["observation_size"],
+            "card_count": metadata_by_hash[tier_hashes[tier]]["card_count"],
             "temperature": temperatures[tier],
             "fallback": "greedy",
         }
@@ -1989,14 +2017,24 @@ def build(
     *,
     recorder: bool = False,
     probe: bool = False,
+    diagnostic: bool = False,
+    observation_profile_id: str | None = None,
     checkpoint_path: Path = DEFAULT_CHECKPOINT,
     tier_checkpoint_overrides: dict[str, Path] | None = None,
     easy_temperature: float = 0.0,
     policy_bundle_path: Path | None = None,
     output_dir: Path | None = None,
 ) -> dict[str, Any]:
-    if recorder and probe:
-        raise ModBuildError("recorder and timing-probe editions are mutually exclusive")
+    if observation_profile_id is not None and (
+        recorder or policy_bundle_path is not None
+    ):
+        raise ModBuildError(
+            "observation profile overrides require a checkpoint AI build"
+        )
+    if sum((recorder, probe, diagnostic)) > 1:
+        raise ModBuildError(
+            "recorder, timing-probe and diagnostic editions are mutually exclusive"
+        )
     if policy_bundle_path is not None and (recorder or tier_checkpoint_overrides):
         raise ModBuildError(
             "a policy bundle cannot be combined with recorder or checkpoint overrides"
@@ -2007,11 +2045,21 @@ def build(
             if recorder
             else PROBE_OUTPUT_DIR
             if probe
+            else DIAGNOSTIC_OUTPUT_DIR
+            if diagnostic
             else OUTPUT_DIR
         )
     output_dir = output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    variant = "recorder" if recorder else "probe" if probe else "ai"
+    variant = (
+        "recorder"
+        if recorder
+        else "probe"
+        if probe
+        else "diagnostic"
+        if diagnostic
+        else "ai"
+    )
     report: dict[str, Any] = {
         "format": "witcher3-gwent-mod-build-v4",
         "variant": variant,
@@ -2088,10 +2136,33 @@ def build(
                 temperatures,
                 action_sequence_hash=probe,
                 policy_bundle_path=policy_bundle_path,
+                **(
+                    {"observation_profile_id": observation_profile_id}
+                    if observation_profile_id is not None
+                    else {}
+                ),
             )
             if probe:
                 sources = _add_timing_probe_sources(sources)
             sources["GwaiPlayTrace"] = mod_trace.helper_source(BUILD_ID)
+            if diagnostic:
+                sources, report["policy_diagnostic"] = mod_diagnostic.prepare_sources(
+                    sources,
+                    BUILD_ID,
+                    {
+                        "gwint_game.redswf": hashlib.sha256(source_redswf).hexdigest(),
+                        "build_mod.py": _hash(Path(__file__)),
+                        "mod_diagnostic.py": _hash(Path(mod_diagnostic.__file__)),
+                        "diagnostic_helper.as": _hash(mod_diagnostic.HELPER_PATH),
+                        "diagnostic_sink.ws": _hash(mod_diagnostic.SINK_PATH),
+                        "gwai_settings.ws": _hash(
+                            ROOT / "mod/ai/settings/scripts/local/gwai_settings.ws"
+                        ),
+                    },
+                )
+                report["information_contract"] += (
+                    "; separate automatic actor-view policy diagnostics include own hand"
+                )
             report["play_trace"] = {
                 "schema": mod_trace.SCHEMA,
                 "build": BUILD_ID,
@@ -2123,6 +2194,10 @@ def build(
                 ),
                 "gwai_playtrace.ws": _hash(mod_trace.SINK_PATH),
             }
+            if diagnostic:
+                report["inputs_sha256"]["gwai_policy_diagnostic.ws"] = _hash(
+                    mod_diagnostic.SINK_PATH
+                )
             if probe:
                 report["inputs_sha256"].update(
                     {
@@ -2290,6 +2365,8 @@ def build(
                     ROOT / "scripts/CheckAs3Initialization.java"
                 )
                 mod_trace.verify_compiled(compiled, helper_exports["GwaiPlayTrace"])
+                if diagnostic:
+                    mod_diagnostic.verify_compiled(helper_exports)
                 verify_compiled_sources(
                     compiled["AIPlayerController"],
                     compiled["GwintGameFlowController"],
@@ -2406,6 +2483,21 @@ def build(
                 report["node_policy_replay_verified"] = True
                 report["policy_core_export_sha256"] = core_digest
                 report["policy_network_export_sha256"] = network_digest
+                if diagnostic:
+                    replay_sources = output_dir / "diagnostic-replay"
+                    replay_sources.mkdir(exist_ok=True)
+                    (replay_sources / "GwaiNetPolicy.as").write_bytes(
+                        node_network_bytes
+                    )
+                    (replay_sources / "GwaiPolicyCore.as").write_bytes(
+                        core_path.read_bytes()
+                    )
+                    report["policy_diagnostic"]["replay_sources"] = {
+                        "network": "diagnostic-replay/GwaiNetPolicy.as",
+                        "core": "diagnostic-replay/GwaiPolicyCore.as",
+                        "network_sha256": network_digest,
+                        "core_sha256": core_digest,
+                    }
                 report["node_policy_replay"] = replay_summaries
                 if probe:
                     report["node_probe_action_gate"] = probe_action_gates
@@ -2505,6 +2597,26 @@ def main() -> int:
         action="store_true",
         help="build the opt-in AI edition with in-game network timing capture",
     )
+    parser.add_argument(
+        "--diagnostic",
+        action="store_true",
+        help="build automatic private actor-view policy diagnostics; separate from public play-by-play",
+    )
+    parser.add_argument(
+        "--observation-profile",
+        help="explicit verified checkpoint observation profile; bundle profiles are immutable",
+    )
+    parser.add_argument(
+        "--shared-manifest",
+        type=Path,
+        help="compile an explicit frozen one-model build manifest",
+    )
+    parser.add_argument(
+        "--legacy-tier-build",
+        action="store_true",
+        help="build the historical separate-model tier architecture",
+    )
+    parser.add_argument("--catalog", type=Path, default=ROOT / ".runtime/catalog.json")
     parser.add_argument("--checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument(
         "--policy-bundle", type=Path, help="use a verified inference-only model bundle"
@@ -2524,8 +2636,45 @@ def main() -> int:
         help="write the build here instead of the edition's .runtime/mod-build* directory",
     )
     args = parser.parse_args()
-    if args.recorder and args.probe:
-        parser.error("--recorder and --probe select separate editions")
+    if sum((args.recorder, args.probe, args.diagnostic)) > 1:
+        parser.error("--recorder, --probe and --diagnostic select separate editions")
+    if args.shared_manifest is not None:
+        if (
+            args.recorder
+            or args.probe
+            or args.diagnostic
+            or args.legacy_tier_build
+            or args.tier_checkpoint
+            or args.policy_bundle
+        ):
+            parser.error("--shared-manifest selects its own inputs and edition")
+        from shared_player.compiler import build_player
+
+        report = build_player(
+            args.shared_manifest,
+            args.output_dir or ROOT / ".runtime/shared-player-build",
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return (
+            0 if report.get("status") == "offline_compiled_and_export_verified" else 1
+        )
+    if not args.legacy_tier_build and not args.recorder and not args.probe:
+        if args.tier_checkpoint:
+            parser.error("tier overrides require --legacy-tier-build")
+        from shared_player.build import build as build_shared
+
+        report = build_shared(
+            checkpoint=args.checkpoint,
+            policy_bundle=args.policy_bundle,
+            catalog=args.catalog,
+            output=args.output_dir,
+            observation_profile=args.observation_profile,
+            diagnostic=args.diagnostic,
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return (
+            0 if report.get("status") == "offline_compiled_and_export_verified" else 1
+        )
     overrides: dict[str, Path] = {}
     for assignment in args.tier_checkpoint:
         tier, separator, value = assignment.partition("=")
@@ -2538,6 +2687,8 @@ def main() -> int:
     report = build(
         recorder=args.recorder,
         probe=args.probe,
+        diagnostic=args.diagnostic,
+        observation_profile_id=args.observation_profile,
         checkpoint_path=args.checkpoint,
         policy_bundle_path=args.policy_bundle,
         tier_checkpoint_overrides=overrides,

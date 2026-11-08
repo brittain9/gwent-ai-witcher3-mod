@@ -72,7 +72,9 @@ def patch_sources(originals: dict[str, str]) -> dict[str, str]:
         raise TraceBuildError(
             f"trace exports are missing {sorted(required - originals.keys())}"
         )
-    if any("GwaiPlayTrace." in source for source in originals.values()):
+    # Only these classes receive native hooks. The untouched AI compilation
+    # unit may already contain helper APIs such as the diagnostic serializer.
+    if any("GwaiPlayTrace." in originals[name] for name in required):
         raise TraceBuildError("play trace hooks already installed")
     patched = {name: source.replace("\r\n", "\n") for name, source in originals.items()}
     base = _method_start(

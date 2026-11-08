@@ -72,7 +72,7 @@ internal class GwaiTimingProbe
                student = modelFor(width,int(data.OBSERVATION_SIZE),int(data.CARD_COUNT),int(data.BLOCKS));
                ignored = GwaiNetPolicy.evaluate(
                   warmObservation,warmActions,data.CARD_IDS,data.CARD_EFFECTS,
-                  student.weights,student.offsets,width,int(data.BLOCKS),0.0);
+                  student.weights,student.offsets,width,int(data.BLOCKS),0.0,String(data.OBSERVATION_PROFILE_ID));
             }
          }
          _studentModelWarmMs = Number(getTimer()) - warmStarted;
@@ -114,7 +114,7 @@ internal class GwaiTimingProbe
          _blocks = int(data.BLOCKS);
 
          encoderStarted = Number(getTimer());
-         GwaiNetPolicy.encodeObservation(observation,data.CARD_IDS,data.CARD_EFFECTS);
+         GwaiNetPolicy.encodeObservation(observation,data.CARD_IDS,data.CARD_EFFECTS,String(data.OBSERVATION_PROFILE_ID));
          encoderElapsed = Number(getTimer()) - encoderStarted;
          _samples.encoder.push(encoderElapsed);
          _samples.full.push(fullElapsed);
@@ -125,7 +125,7 @@ internal class GwaiTimingProbe
             widthStarted = Number(getTimer());
             ignored = GwaiNetPolicy.evaluate(
                observation,legalActions,data.CARD_IDS,data.CARD_EFFECTS,
-               student.weights,student.offsets,width,_blocks,0.0);
+               student.weights,student.offsets,width,_blocks,0.0,String(data.OBSERVATION_PROFILE_ID));
             widthElapsed = Number(getTimer()) - widthStarted;
             widthTimes[String(width)] = widthElapsed;
             if(Boolean(_discardWidthSample[String(width)]))

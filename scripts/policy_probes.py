@@ -11,8 +11,10 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from scripts.policy_format import OBSERVATION_PROFILES, observation_profile
     from scripts.synthetic_policy_cases import synthetic_cases
 except ModuleNotFoundError:
+    from policy_format import OBSERVATION_PROFILES, observation_profile
     from synthetic_policy_cases import synthetic_cases
 
 FORMAT = "witcher3-policy-probes-v1"
@@ -70,7 +72,11 @@ def _write_json(path: Path, value: Any) -> None:
 
 
 def create_probes(
-    checkpoints: dict[str, Path], catalog_path: Path, output_path: Path
+    checkpoints: dict[str, Path],
+    catalog_path: Path,
+    output_path: Path,
+    *,
+    observation_profile_id: str | None = None,
 ) -> dict[str, Any]:
     """Produce reference checks; model dependencies are used only by this exporter."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -89,7 +95,12 @@ def create_probes(
         checkpoint_sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
         if checkpoint_sha in models:
             continue
-        policy = checkpoint_policy(checkpoint, catalog, catalog_sha256=catalog_sha)
+        policy = checkpoint_policy(
+            checkpoint,
+            catalog,
+            catalog_sha256=catalog_sha,
+            observation_profile_id=observation_profile_id,
+        )
         predictions = [
             prediction
             for start in range(0, COUNT, 10)
@@ -100,6 +111,7 @@ def create_probes(
         header = {
             "fixture_schema": 1,
             "observation_schema_id": "witcher3-gwent-seat-view-v1",
+            "observation_profile_id": policy.observation_profile_id,
             "action_schema_id": "witcher3-gwent-factorized-action-v1",
             "checkpoint_sha256": checkpoint_sha,
             "catalog_sha256": catalog_sha,
@@ -170,6 +182,7 @@ def validate_model_probes(
     expected_header = {
         "fixture_schema": 1,
         "observation_schema_id": metadata["observation_schema_id"],
+        "observation_profile_id": observation_profile(metadata),
         "action_schema_id": metadata["action_schema_id"],
         "checkpoint_sha256": checkpoint_sha,
         "catalog_sha256": metadata["catalog_sha256"],
@@ -180,7 +193,11 @@ def validate_model_probes(
         "seed": SEED,
         "position_count": COUNT,
     }
-    if probe["header"] != expected_header:
+    header = probe["header"]
+    if not isinstance(header, dict):
+        raise ValueError("policy probe header must be an object")
+    header = {**header, "observation_profile_id": observation_profile(header)}
+    if header != expected_header:
         raise ValueError("policy probe identity or schema differs from the model")
     states = synthetic_cases(
         card_ids, COUNT, SEED, dict(zip(card_ids, effects, strict=True))
@@ -276,6 +293,7 @@ def main() -> int:
     )
     parser.add_argument("--catalog", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--observation-profile", choices=OBSERVATION_PROFILES)
     args = parser.parse_args()
     checkpoints = {}
     for assignment in args.checkpoint:
@@ -283,7 +301,17 @@ def main() -> int:
         if not separator or tier not in {"easy", "normal", "hard"} or not value:
             parser.error("checkpoint must be easy=PATH, normal=PATH or hard=PATH")
         checkpoints[tier] = Path(value)
-    print(json.dumps(create_probes(checkpoints, args.catalog, args.output), indent=2))
+    print(
+        json.dumps(
+            create_probes(
+                checkpoints,
+                args.catalog,
+                args.output,
+                observation_profile_id=args.observation_profile,
+            ),
+            indent=2,
+        )
+    )
     return 0
 
 

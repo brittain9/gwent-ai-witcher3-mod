@@ -1,7 +1,7 @@
 # Installation and controls
 
 The prebuilt player package includes the finished modified Gwent screen and
-all three trained policies. The opponent runs locally inside the game.
+trained model weights. The opponent runs locally inside the game.
 Python, Java, Node.js and model-training tools are not required to play.
 
 ## Requirements
@@ -31,6 +31,9 @@ same layout for both routes. Local mods must be enabled in the game's
 Start the game and open **Settings > Mods > Gwent: Trained Opponents**.
 **Enable AI** is on by default. Use **Gameplay > Gwent difficulty** to choose
 the challenge. No separate settings XML or configuration-file copying is needed.
+After loading a save, **Gwent difficulty** also appears in this mod's menu.
+Both controls change the same game setting. This second control is in the
+current source on `main`; it awaits a new player package.
 
 The main-menu **MODS** button opens the game's separate online mod browser.
 Use **Settings > Mods** for this mod's controls.
@@ -40,7 +43,7 @@ Use **Settings > Mods** for this mod's controls.
 | Control | Effect |
 |---|---|
 | Enable AI | Trained AI when on, stock AI when off, for story and practice |
-| Gameplay > Gwent difficulty | The game's existing setting chooses the native NPC deck level and the policy for both story and practice; Normal selects the Medium policy |
+| Gwent difficulty (shared with Gameplay) | The game's existing setting chooses the native NPC deck level and controller difficulty for both story and practice |
 | Practice opponent / deck | Chooses the native opponent collection for practice |
 | Start practice match | Opens deck selection from a loaded game's pause menu, outside combat and dialogue |
 | Show AI status | Shows current settings and the latest recorded match |

@@ -1,5 +1,9 @@
 # Comparison with the original AI
 
+The shared controller retains these Hard weights. The benchmark below measured
+the earlier policy directly; it is not a new measurement of controller changes
+or of the difficulty gaps.
+
 ## Equal-deck benchmark
 
 On October 31, 2026, the Hard policy played a simulator port of the original

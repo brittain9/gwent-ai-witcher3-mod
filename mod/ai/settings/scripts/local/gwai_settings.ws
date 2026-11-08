@@ -133,7 +133,7 @@ function GwaiMenuControl(storage : CScriptedFlashValueStorage, optionName : name
     return option;
 }
 
-function GwaiMenuAppend(storage : CScriptedFlashValueStorage, entries : CScriptedFlashArray) : void
+function GwaiMenuAppend(storage : CScriptedFlashValueStorage, entries : CScriptedFlashArray, isMainMenu : bool) : void
 {
     var mods : CScriptedFlashObject;
     var page : CScriptedFlashObject;
@@ -170,6 +170,10 @@ function GwaiMenuAppend(storage : CScriptedFlashValueStorage, entries : CScripte
     page.SetMemberFlashUInt("tag", NameToFlashUInt('MenuSelector'));
     page.SetMemberFlashUInt("type", IGMActionType_MenuLastHolder);
     controls = GwaiMenuControls(storage);
+    if (!isMainMenu)
+    {
+        IngameMenu_AddGwentDifficultyOption(storage, controls);
+    }
     page.SetMemberFlashArray("subElements", controls);
     pages.PushBackFlashObject(page);
     cfg.SetRawConfigValueByStr("W3GwentAI", "GwaiMenuTransport", "script");
@@ -185,8 +189,22 @@ function showOptionsPanel() : void
     wrappedMethod();
     GwaiSettingsInitialize();
     entries = IngameMenu_FillOptionsSubMenuData(m_flashValueStorage, isMainMenu);
-    GwaiMenuAppend(m_flashValueStorage, entries);
+    GwaiMenuAppend(m_flashValueStorage, entries, isMainMenu);
     m_flashValueStorage.SetFlashArray("ingamemenu.options.entries", entries);
+}
+
+@wrapMethod(CR4IngameMenu)
+function OnShowOptionSubmenu(actionType : int, menuTag : int, id : string) : void
+{
+    var difficulty : CScriptedFlashArray;
+    wrappedMethod(actionType, menuTag, id);
+    if (!isMainMenu && (id == "gameplay" || id == "gwai_trained_opponents"))
+    {
+        difficulty = m_flashValueStorage.CreateTempFlashArray();
+        IngameMenu_AddGwentDifficultyOption(m_flashValueStorage, difficulty);
+        m_flashValueStorage.SetFlashArray("options.force_update_values", difficulty);
+        theGame.GetGuiManager().ForceProcessFlashStorage();
+    }
 }
 
 @wrapMethod(CR4IngameMenu)

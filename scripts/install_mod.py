@@ -90,6 +90,18 @@ VARIANTS = {
         "mod/ai/settings/menu/modW3GwentAI.xml",
         script_menu=True,
     ),
+    "diagnostic": Variant(
+        "modW3GwentAIDiagnostic",
+        RUNTIME_DIR / "mod-build-diagnostic",
+        RUNTIME_DIR / "mod-package-diagnostic",
+        (
+            "mod/ai/settings/scripts/local/gwai_settings.ws",
+            "mod/trace/settings/scripts/local/gwai_playtrace.ws",
+            "mod/diagnostic/settings/scripts/local/gwai_policy_diagnostic.ws",
+        ),
+        "mod/ai/settings/menu/modW3GwentAI.xml",
+        script_menu=True,
+    ),
     "probe": Variant(
         "modW3GwentAIProbe",
         RUNTIME_DIR / "mod-build-probe",
@@ -222,15 +234,28 @@ def assemble_package(
     build_dir: Path | None = None,
     package_dir: Path | None = None,
     pins_path: Path | None = None,
+    asset_root: Path | None = None,
 ) -> Path:
     """Pack a finished build into the folder layout the game loads, and verify it."""
     if variant not in VARIANTS:
         raise ModInstallError(f"unknown mod variant: {variant}")
     spec = VARIANTS[variant]
+    assets = (asset_root or ROOT).resolve()
     build_dir = (build_dir or spec.build_dir).resolve()
     package_dir = (package_dir or spec.package_dir).resolve()
     manifest_path = build_dir / "manifest.json"
     report = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if (
+        report.get("shared_format") == "witcher3-single-policy-player-v1"
+        and asset_root is None
+    ):
+        from shared_player.packaging import assemble_verified
+
+        receipt = package_dir.parent / (package_dir.name + "-assembly-proof.json")
+        assemble_verified(
+            build_dir, package_dir, receipt_path=receipt, pins_path=pins_path
+        )
+        return package_dir
     if report.get("status") != BUILD_STATUS:
         raise ModInstallError(
             f"offline mod build has unexpected status: {report.get('status')}"
@@ -258,7 +283,7 @@ def assemble_package(
     recorded = report.get("inputs_sha256", {})
     for source in (*spec.scripts, spec.menu):
         name = Path(source).name
-        actual = _sha256(ROOT / source)
+        actual = _sha256(assets / source)
         if (
             spec.script_menu or name in recorded or name.endswith(".ws")
         ) and recorded.get(name) != actual:
@@ -270,10 +295,10 @@ def assemble_package(
     assembled_settings = None
     if spec.script_menu:
         assembled_settings = settings_menu.assemble_settings(
-            (ROOT / "mod/ai/settings/scripts/local/gwai_settings.ws").read_text(
+            (assets / "mod/ai/settings/scripts/local/gwai_settings.ws").read_text(
                 encoding="utf-8"
             ),
-            (ROOT / spec.menu).read_text(encoding="utf-8"),
+            (assets / spec.menu).read_text(encoding="utf-8"),
         )
     bundle, store = redbundle.pack([(SWF_MEMBER, redswf)])
     if package_dir.exists():
@@ -288,11 +313,11 @@ def assemble_package(
         if spec.script_menu and Path(script).name == "gwai_settings.ws":
             target.write_text(assembled_settings, encoding="utf-8")
         else:
-            shutil.copy2(ROOT / script, target)
+            shutil.copy2(assets / script, target)
     if not spec.script_menu:
         menu_target = package_dir / MENU_DIR / Path(spec.menu).name
         menu_target.parent.mkdir(parents=True)
-        shutil.copy2(ROOT / spec.menu, menu_target)
+        shutil.copy2(assets / spec.menu, menu_target)
     shutil.copy2(manifest_path, package_dir / "build-manifest.json")
     shutil.copy2(pins_path, package_dir / "game-pins.json")
     files = {
@@ -348,16 +373,21 @@ def build_package(
     checkpoint: Path = DEFAULT_CHECKPOINT,
     tier_checkpoints: list[str] | None = None,
     easy_temperature: float = 0.0,
+    observation_profile_id: str | None = None,
 ) -> Path:
     if variant not in VARIANTS:
         raise ModInstallError(f"unknown mod variant: {variant}")
+    if variant == "recorder" and observation_profile_id is not None:
+        raise ModInstallError("the stock recorder has no network observation profile")
     command = cli_encoding.python_command(ROOT / "scripts/build_mod.py")
     if variant == "recorder":
         command.append("--recorder")
     else:
-        if variant == "probe":
-            command.append("--probe")
+        if variant in {"probe", "diagnostic"}:
+            command.append("--" + variant)
         command.extend(["--checkpoint", str(checkpoint)])
+        if observation_profile_id is not None:
+            command.extend(["--observation-profile", observation_profile_id])
         for assignment in tier_checkpoints or []:
             command.extend(["--tier-checkpoint", assignment])
         command.extend(["--easy-temperature", str(easy_temperature)])
@@ -1130,6 +1160,10 @@ def main(argv: list[str] | None = None) -> int:
         "--tier-checkpoint", action="append", default=[], metavar="TIER=PATH"
     )
     parser.add_argument("--easy-temperature", type=float, default=0.0)
+    parser.add_argument(
+        "--observation-profile",
+        help="verified observation profile for a checkpoint build",
+    )
     args = parser.parse_args(argv)
     if args.check and args.package is None:
         parser.error("--check needs --package")
@@ -1140,6 +1174,11 @@ def main(argv: list[str] | None = None) -> int:
                 checkpoint=args.checkpoint,
                 tier_checkpoints=args.tier_checkpoint,
                 easy_temperature=args.easy_temperature,
+                **(
+                    {"observation_profile_id": args.observation_profile}
+                    if args.observation_profile is not None
+                    else {}
+                ),
             )
             print(f"Package assembled at {package}")
             return 0

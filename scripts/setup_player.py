@@ -675,6 +675,12 @@ def run_step(command: list[str], *, label: str, cwd: Path, env: dict[str, str]) 
 
 
 def prepare(root: Path, game_dir: Path, env: dict[str, str]) -> Path:
+    runtime = root / ".runtime"
+    runtime.mkdir(parents=True, exist_ok=True)
+    attempt = Path(tempfile.mkdtemp(prefix="player-prepare-", dir=runtime))
+    build_dir = attempt / "build"
+    package_dir = attempt / "package"
+
     def script(name: str) -> str:
         return str(root / "scripts" / name)
 
@@ -702,15 +708,13 @@ def prepare(root: Path, game_dir: Path, env: dict[str, str]) -> Path:
                 "--policy-bundle",
                 str(root / "policies"),
                 "--output-dir",
-                str(root / ".runtime/player-build"),
+                str(build_dir),
             ),
         ),
     ]
     for label, command in commands:
         run_step(command, label=label, cwd=root, env=env)
-    report = json.loads(
-        (root / ".runtime/player-build/manifest.json").read_text(encoding="utf-8")
-    )
+    report = json.loads((build_dir / "manifest.json").read_text(encoding="utf-8"))
     if report.get("status") != "offline_compiled_and_export_verified":
         raise SetupError(
             "The local build did not pass verification; no game files were changed"
@@ -720,8 +724,8 @@ def prepare(root: Path, game_dir: Path, env: dict[str, str]) -> Path:
     try:
         package = installer.assemble_package(
             "ai",
-            build_dir=root / ".runtime/player-build",
-            package_dir=root / ".runtime/player-package",
+            build_dir=build_dir,
+            package_dir=package_dir,
         )
         installer._read_package(package)
     except installer.ModInstallError as exc:

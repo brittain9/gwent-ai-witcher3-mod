@@ -22,6 +22,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from learning.catalog_identity import catalog_identity
 from learning.encoding import ACTION_SCHEMA_ID, OBSERVATION_SCHEMA_ID, encode_batch
 from learning.policy import checkpoint_policy, served_argmax
+from scripts.policy_format import OBSERVATION_PROFILES
 from scripts.synthetic_policy_cases import PENDING_KINDS as PENDING_KINDS
 from scripts.synthetic_policy_cases import synthetic_cases as synthetic_cases
 
@@ -34,7 +35,9 @@ DEFAULT_OUTPUT = PROJECT_ROOT / ".runtime/policy-as3-fixtures/synthetic.jsonl"
 def _logits_and_choices(
     policy: Any, states: list[dict[str, Any]], card_ids: list[int]
 ) -> list[dict[str, Any]]:
-    encoded = encode_batch(states, card_ids)
+    encoded = encode_batch(
+        states, card_ids, observation_profile_id=policy.observation_profile_id
+    )
     with torch.inference_mode():
         trunk, group_tensor, local_tensor = policy._model.logits(
             torch.from_numpy(encoded.observations),
@@ -83,6 +86,7 @@ def create_fixtures(
     count: int = 200,
     seed: int = 20261025,
     env_count: int = 10,
+    observation_profile_id: str | None = None,
 ) -> dict[str, Any]:
     """Write synthetic coverage with real checkpoint policy/value reference outputs."""
     if type(count) is not int or count < 1:
@@ -95,7 +99,12 @@ def create_fixtures(
     catalog = json.loads(catalog_bytes)
     catalog_hash = catalog_identity(catalog)
     card_ids = sorted(int(item["id"]) for item in catalog["cards"])
-    policy = checkpoint_policy(checkpoint_path, catalog, catalog_sha256=catalog_hash)
+    policy = checkpoint_policy(
+        checkpoint_path,
+        catalog,
+        catalog_sha256=catalog_hash,
+        observation_profile_id=observation_profile_id,
+    )
     states = synthetic_cases(
         card_ids,
         count,
@@ -116,6 +125,7 @@ def create_fixtures(
     header = {
         "fixture_schema": 1,
         "observation_schema_id": OBSERVATION_SCHEMA_ID,
+        "observation_profile_id": policy.observation_profile_id,
         "action_schema_id": ACTION_SCHEMA_ID,
         "checkpoint_sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest(),
         "catalog_sha256": catalog_hash,
@@ -153,6 +163,7 @@ def create_fixtures(
         "synthetic_batch_size": env_count,
         "rules_validated": False,
         "checkpoint_policy_id": policy.policy_id,
+        "observation_profile_id": policy.observation_profile_id,
         "catalog_sha256": catalog_hash,
         "generator_sha256": generator_hash,
         "output": str(output_path),
@@ -168,6 +179,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=200)
     parser.add_argument("--seed", type=int, default=20261025)
+    parser.add_argument("--observation-profile", choices=OBSERVATION_PROFILES)
     parser.add_argument(
         "--envs",
         type=int,
@@ -184,6 +196,7 @@ def main() -> int:
                 count=args.count,
                 seed=args.seed,
                 env_count=args.envs,
+                observation_profile_id=args.observation_profile,
             ),
             indent=2,
         )

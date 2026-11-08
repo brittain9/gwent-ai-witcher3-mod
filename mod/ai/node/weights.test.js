@@ -19,6 +19,15 @@ class ByteArray {
   writeByte(value) {
     this.bytes.push(value & 255);
   }
+  writeUnsignedInt(value) {
+    const bytes = Buffer.alloc(4);
+    if (this.endian === "littleEndian") bytes.writeUInt32LE(value >>> 0);
+    else bytes.writeUInt32BE(value >>> 0);
+    this.bytes.push(...bytes);
+  }
+  get length() {
+    return this.bytes.length;
+  }
   get bytesAvailable() {
     return this.bytes.length - this.position;
   }
@@ -33,16 +42,17 @@ function loadWeightsClass() {
   const open = SOURCE.indexOf("{", SOURCE.indexOf("internal class GwaiNetWeights"));
   const body = SOURCE.slice(open + 1, SOURCE.lastIndexOf("}"));
   const javascript = body
-    .replace(/private static var\s+(\w+)\s*:\s*\w+\s*=/g, "let $1 =")
+    .replace(/private static var\s+(\w+)\s*:\s*[\w.<>]+\s*=/g, "let $1 =")
     .replace(/(?:public|private) static function\s+(\w+)\(([^)]*)\)\s*:\s*[\w.<>]+\s*\{/g, "function $1($2) {")
-    .replace(/new Vector\.<Number>\(([^,]+),\s*true\)/g, "new Array($1).fill(0)")
+    .replace(/new Vector\.<(?:Number|int)>\(([^,]+),\s*true\)/g, "new Array($1).fill(0)")
     .replace(/new flash\.utils\.ByteArray\(\)/g, "new ByteArray()")
     .replace(/flash\.utils\.Endian\.LITTLE_ENDIAN/g, '"littleEndian"')
-    .replace(/\b([A-Za-z_$][\w$]*)\s*:\s*(?:Vector\.<Number>|flash\.utils\.ByteArray|(?:Object|Array|Number|String|Boolean|int)\b(?!\s*\())/g, "$1");
+    .replace(/flash\.utils\.Endian\.BIG_ENDIAN/g, '"bigEndian"')
+    .replace(/\b([A-Za-z_$][\w$]*)\s*:\s*(?:Vector\.<(?:Number|int)>|flash\.utils\.ByteArray|(?:Object|Array|Number|String|Boolean|int|uint|Error)\b(?!\s*\())/g, "$1");
   const moduleShim = { exports: {} };
   vm.runInNewContext(
     `${javascript}\nmodule.exports = { load, loadStep, isLoaded };`,
-    { module: moduleShim, ByteArray, Math, String, Error, int: (value) => Math.trunc(Number(value)) | 0 },
+    { module: moduleShim, ByteArray, Math, String, Error, uint: (value) => Number(value) >>> 0, int: (value) => Math.trunc(Number(value)) | 0 },
   );
   return moduleShim.exports;
 }

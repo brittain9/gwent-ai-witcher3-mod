@@ -9,6 +9,12 @@ from typing import Any
 
 import numpy as np
 
+from scripts.policy_format import (
+    FULL_FACTION_PROFILE,
+    UNKNOWN_FACTION_PROFILE,
+    validate_observation_profile,
+)
+
 OBSERVATION_SCHEMA_ID = "witcher3-gwent-seat-view-v1"
 ACTION_SCHEMA_ID = "witcher3-gwent-factorized-action-v1"
 EFFECT_COUNT = 45
@@ -73,7 +79,10 @@ def observation_size(card_ids: Sequence[int]) -> int:
 
 
 def encode_batch(
-    states: Sequence[dict[str, Any] | None], card_ids: Sequence[int]
+    states: Sequence[dict[str, Any] | None],
+    card_ids: Sequence[int],
+    *,
+    observation_profile_id: str = FULL_FACTION_PROFILE,
 ) -> EncodedBatch:
     """Encode a native state vector into contiguous NumPy batches.
 
@@ -81,6 +90,7 @@ def encode_batch(
     actions. Opponent hand contents, deck order and native snapshots are not
     read.
     """
+    validate_observation_profile(observation_profile_id)
     if not card_ids or len(set(card_ids)) != len(card_ids):
         raise ValueError("card_ids must be a nonempty unique catalog vocabulary")
     card_index = {template_id: index + 1 for index, template_id in enumerate(card_ids)}
@@ -100,7 +110,9 @@ def encode_batch(
             raise ValueError(
                 f"state {row_index} is missing its seat view or legal actions"
             )
-        observation_rows[row_index] = _encode_observation(observation, card_index)
+        observation_rows[row_index] = _encode_observation(
+            observation, card_index, observation_profile_id=observation_profile_id
+        )
         actions_by_state.append(actions)
         groups_by_state.append(_action_groups(actions))
 
@@ -174,8 +186,12 @@ def select_encoded_rows(encoded: EncodedBatch, rows: Sequence[int]) -> EncodedBa
 
 
 def _encode_observation(
-    observation: dict[str, Any], card_index: dict[int, int]
+    observation: dict[str, Any],
+    card_index: dict[int, int],
+    *,
+    observation_profile_id: str = FULL_FACTION_PROFILE,
 ) -> np.ndarray:
+    validate_observation_profile(observation_profile_id)
     vocab_size = len(card_index)
     count_start = 0
     power_start = len(ZONE_NAMES) * vocab_size
@@ -296,7 +312,12 @@ def _encode_observation(
 
     for relative_seat, player in enumerate((own, opponent)):
         offset = 28 + relative_seat * 11
-        faction = int(player.get("faction", 0))
+        # Match the model's training inputs without changing the game state.
+        faction = (
+            0
+            if observation_profile_id == UNKNOWN_FACTION_PROFILE
+            else int(player.get("faction", 0))
+        )
         if 0 <= faction < 6:
             globals_vector[offset + faction] = 1.0
         globals_vector[offset + 6] = min(1.0, float(player.get("hand_count", 0)) / 20.0)

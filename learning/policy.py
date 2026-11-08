@@ -10,6 +10,12 @@ from typing import Any, Sequence
 
 import torch
 
+from scripts.policy_format import (
+    FULL_FACTION_PROFILE,
+    checkpoint_observation_profile,
+    validate_observation_profile,
+)
+
 from .catalog_identity import catalog_identity
 from .encoding import (
     ACTION_SCHEMA_ID,
@@ -134,12 +140,16 @@ class BatchedCheckpointPolicy(ProbabilityPolicy):
         *,
         device: torch.device = torch.device("cpu"),
         checkpoint_sha256: str | None = None,
+        observation_profile_id: str = FULL_FACTION_PROFILE,
     ) -> None:
         self._model = model
         self._card_ids = card_ids
         self.policy_id = policy_id
         self._device = device
         self.checkpoint_sha256 = checkpoint_sha256
+        self.observation_profile_id = validate_observation_profile(
+            observation_profile_id
+        )
 
     def _encode(
         self,
@@ -161,6 +171,7 @@ class BatchedCheckpointPolicy(ProbabilityPolicy):
                 for observation, actions in zip(observations, legal_lists, strict=True)
             ],
             self._card_ids,
+            observation_profile_id=self.observation_profile_id,
         )
 
     def _forward(
@@ -408,10 +419,15 @@ def checkpoint_policy(
     *,
     catalog_sha256: str,
     device: torch.device = torch.device("cpu"),
+    observation_profile_id: str | None = None,
 ) -> BatchedCheckpointPolicy:
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     model_config = checkpoint.get("model_config", {})
     identity = checkpoint.get("identity", {})
+    checkpoint_hash = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()
+    profile = checkpoint_observation_profile(
+        checkpoint_hash, model_config, observation_profile_id
+    )
     card_ids = sorted(int(card["id"]) for card in catalog["cards"])
     expected_catalog = catalog_identity(catalog)
     if (
@@ -438,10 +454,16 @@ def checkpoint_policy(
     model.to(device)
     model.eval()
 
-    checkpoint_hash = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()
     policy_id = checkpoint_policy_id(checkpoint, checkpoint_hash)
+    if profile != FULL_FACTION_PROFILE:
+        policy_id += f"+observation-profile:{profile}"
     return BatchedCheckpointPolicy(
-        model, card_ids, policy_id, device=device, checkpoint_sha256=checkpoint_hash
+        model,
+        card_ids,
+        policy_id,
+        device=device,
+        checkpoint_sha256=checkpoint_hash,
+        observation_profile_id=profile,
     )
 
 

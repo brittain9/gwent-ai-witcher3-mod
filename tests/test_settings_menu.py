@@ -136,13 +136,15 @@ const env={isMainMenu:true,hasChangedOption:false,NameToString:String,IntToStrin
  IGMActionType_Toggle:1,IGMActionType_List:2,IGMActionType_Button:3,IGMActionType_Separator:4,
  IGMActionType_MenuHolder:5,IGMActionType_MenuLastHolder:6,
  GetLocStringByKeyExt:k=>k==='panel_mainmenu_mods'?'Mods':k,
+ IngameMenu_AddGwentDifficultyOption(storage,rows){rows.PushBackFlashObject(object({id:'GwentDifficulty',tag:'GwentDifficulty',
+ groupID:'Gameplay',current:'1',startingValue:'1',label:'native difficulty',type:2,subElements:array(['E','N','H'])}))},
  GwaiSettingsInitialize(){initializeCalls++},OnPlaySoundEvent(){},
  theGame:{GetInGameConfigWrapper:()=>cfg,SaveUserSettings(){saves++}},
  wrappedMethod(){nativeCalls++;return 'native-result'},
  m_flashValueStorage:{CreateTempFlashObject:()=>object(),CreateTempFlashArray:()=>array(),
  SetFlashArray(k,v){assert.equal(k,'ingamemenu.options.entries');env.published=v;publishes++}}};
 const params={GwaiMenuGroupId:[],GwaiMenuControl:['storage','optionName','label','kind','indent'],
- GwaiMenuControls:['storage'],GwaiMenuAppend:['storage','entries'],GwaiMenuAcceptsValue:['optionName','value'],
+ GwaiMenuControls:['storage'],GwaiMenuAppend:['storage','entries','isMainMenu'],GwaiMenuAcceptsValue:['optionName','value'],
  OnOptionValueChanged:['groupId','optionName','optionValue'],OnCancelOptionValueChange:['groupId','optionName'],showOptionsPanel:[]};
 for(const name of Object.keys(params))env[name]=(...args)=>new Function('env',...params[name],'with(env){'+bodies[name]+'}')(env,...args);
 const unrelated=object({id:'other_mod',label:'Another mod',subElements:array([object({id:'OtherEnabled'})])});
@@ -155,15 +157,19 @@ for(const hasMods of [false,true])for(const isMainMenu of [false,true]){
  if(hasMods){assert.equal(mods,originalMods);assert.equal(mods.values.subElements.items[0],unrelated)}
  const page=mods.values.subElements.items.find(o=>o.values.id==='gwai_trained_opponents');
  assert.equal(page.values.label,'Gwent: Trained Opponents');assert.equal(page.values.type,6);
- const rows=page.values.subElements.items;assert.equal(rows.length,6);
- assert.deepEqual(rows.map(o=>o.values.id),expected.map(o=>o.id));
- for(let i=0;i<rows.length;i++){
-  const row=rows[i].values,spec=expected[i];assert.equal(row.label,spec.label);assert.equal(row.type,kinds[spec.kind]);
+ const rows=page.values.subElements.items,ownRows=rows.filter(o=>o.values.id!=='GwentDifficulty');
+ assert.equal(rows.length,isMainMenu?6:7);assert.equal(rows.filter(o=>o.values.id==='GwentDifficulty').length,isMainMenu?0:1);
+ assert.deepEqual(ownRows.map(o=>o.values.id),expected.map(o=>o.id));
+ for(let i=0;i<ownRows.length;i++){
+  const row=ownRows[i].values,spec=expected[i];assert.equal(row.label,spec.label);assert.equal(row.type,kinds[spec.kind]);
   assert.equal(row.indent,spec.indent);assert.equal(row.groupID,sentinel);assert.equal(row.tag,spec.id);
   assert.deepEqual(row.subElements.items,spec.choices);assert.equal(row.disabled,false);
  }
  assert.equal(rows.find(o=>o.values.id==='GwaiDevOpponent').values.current,'38');
- assert.equal(values.GwaiMenuTransport,'script');assert.equal(values.GwaiMenuVarCount,'6');
+ if(!isMainMenu){const native=rows.find(o=>o.values.id==='GwentDifficulty').values;
+  assert.equal(native.groupID,'Gameplay');assert.equal(native.tag,'GwentDifficulty');assert.equal(native.current,'1');
+  assert.deepEqual(native.subElements.items,['E','N','H']);}
+ assert.equal(values.GwaiMenuTransport,'script');assert.equal(values.GwaiMenuVarCount,isMainMenu?'6':'7');
 }
 assert.equal(initializeCalls,4);assert.equal(publishes,4);assert.equal(nativeCalls,4);
 for(const spec of expected){
@@ -192,6 +198,77 @@ assert.equal(rows.find(o=>o.values.id==='GwaiDevOpponent').values.current,'38');
 assert.ok(!rows.some(o=>o.values.id==='GwaiDevTier'));
 assert.equal(env.hasChangedOption,true);
 """.replace("BODIES", json.dumps(bodies)).replace("EXPECTED", json.dumps(expected))
+        result = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_native_difficulty_refreshes_both_pages_in_one_options_session(self):
+        source = assembled_source()
+        bodies = {
+            name: javascript_body(name, source)
+            for name in (
+                "OnOptionValueChanged",
+                "OnShowOptionSubmenu",
+                "GwaiGwentDifficulty",
+            )
+        }
+        harness = r"""
+const assert=require('node:assert/strict'),bodies=BODIES;
+const gameplayGroup=71,difficultyTag=91,ownGroup=31415;
+function fixture(initial){
+ const pages={gameplay:{current:String(Math.max(initial-1,0))},gwai_trained_opponents:{current:String(Math.max(initial-1,0))}};
+ const events=[],state={fact:initial,active:'gameplay',updates:null,refreshes:0,nativeChanges:0};
+ const env={isMainMenu:false,GwaiMenuGroupId:()=>ownGroup,
+  FactsQueryLatestValue(key){assert.equal(key,'gwent_difficulty');return state.fact},
+  theGame:{GetInGameConfigWrapper(){throw new Error('difficulty must not read or write a mod preference')},
+   SaveUserSettings(){throw new Error('native fact saving must stay on the native path')},
+   GetGuiManager:()=>({ForceProcessFlashStorage(){
+    events.push('refresh');state.refreshes++;
+    assert.ok(state.updates);for(const row of state.updates.items){
+     assert.equal(row.tag,difficultyTag);
+     // Only the visible copy is refreshed. Hidden cached rows deliberately stay stale.
+     pages[state.active].current=row.current;
+    }state.updates=null;
+   }})},
+  m_flashValueStorage:{CreateTempFlashArray(){return {items:[],PushBackFlashObject(row){this.items.push(row)}}},
+   SetFlashArray(key,rows){assert.equal(key,'options.force_update_values');state.updates=rows}},
+  IngameMenu_AddGwentDifficultyOption(storage,rows){
+   events.push('native-helper');rows.PushBackFlashObject({tag:difficultyTag,current:String(Math.max(state.fact-1,0))});
+  }};
+ const params={OnOptionValueChanged:['groupId','optionName','optionValue'],
+  OnShowOptionSubmenu:['actionType','menuTag','id'],GwaiGwentDifficulty:[]};
+ const handlers={OnOptionValueChanged(group,name,value){
+   events.push('native-change');assert.equal(group,gameplayGroup);assert.equal(name,'GwentDifficulty');
+   if(['0','1','2'].includes(value)){state.fact=Number(value)+1;state.nativeChanges++}
+   return 'native-result';
+  },OnShowOptionSubmenu(actionType,menuTag,id){events.push('native-navigation');assert.equal(id,state.active)}};
+ function run(name,...args){env.wrappedMethod=(...nativeArgs)=>handlers[name](...nativeArgs);
+  return new Function('env',...params[name],'with(env){'+bodies[name]+'}')(env,...args)}
+ return {pages,events,state,env,run};
+}
+for(const initial of [0,1,2,3])for(const first of ['gameplay','gwai_trained_opponents']){
+ const f=fixture(initial),second=first==='gameplay'?'gwai_trained_opponents':'gameplay';
+ for(const [page,choice] of [[first,'2'],[second,'0'],[first,'1'],[second,'2']]){
+  f.state.active=page;f.events.length=0;
+  f.run('OnShowOptionSubmenu',6,17,page);
+  assert.deepEqual(f.events,['native-navigation','native-helper','refresh']);
+  assert.equal(f.pages[page].current,String(Math.max(f.state.fact-1,0)));
+  const hidden=page===first?second:first,beforeHidden=f.pages[hidden].current;
+  // The UI commits its visible row, then the unmodified native handler sets the one shared fact.
+  f.pages[page].current=choice;
+  assert.equal(f.run('OnOptionValueChanged',gameplayGroup,'GwentDifficulty',choice),'native-result');
+  assert.equal(f.state.fact,Number(choice)+1);assert.equal(f.run('GwaiGwentDifficulty'),Number(choice)+1);
+  assert.equal(f.pages[hidden].current,beforeHidden,'no assumption that hidden cached copies update');
+  f.state.active=hidden;f.run('OnShowOptionSubmenu',6,17,hidden);
+  assert.equal(f.pages[hidden].current,choice,'reentering the other page must show the shared value');
+ }
+ assert.equal(f.state.nativeChanges,4);
+ const refreshes=f.state.refreshes;
+ for(const [main,id] of [[false,'audio'],[true,'gameplay'],[true,'gwai_trained_opponents']]){
+  f.env.isMainMenu=main;f.state.active=id;f.events.length=0;f.run('OnShowOptionSubmenu',6,17,id);
+  assert.deepEqual(f.events,['native-navigation']);assert.equal(f.state.refreshes,refreshes);
+ }
+}
+""".replace("BODIES", json.dumps(bodies))
         result = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 

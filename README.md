@@ -13,6 +13,11 @@ The original Gwent AI uses handwritten rules and scoring to choose its moves.
 These can produce wasteful decisions, such as repeating an ineffective weather
 effect or spending cards for little benefit.
 
+The source on `main` now uses one shared model with difficulty controlled by move
+selection. The latest downloadable release remains unchanged until a new player
+package is published. Model stats and controls below describe the current source;
+the older download uses three separate policies.
+
 ## How does it compare?
 
 With identical decks, the Hard policy won **75% of its simulated matches
@@ -34,8 +39,8 @@ Your collection and the NPC's deck still affect each match.
 ## Designed for the game
 
 The aim is a more capable, enjoyable opponent that fits the original minigame.
-**Easy, Medium and Hard** provide different levels of challenge in story and
-practice matches.
+**Easy, Normal and Hard** vary move selection in story and practice matches.
+The strength gaps between the shared-model settings have not been measured.
 
 The mod does not aim to provide perfect or unbeatable play. Self-play is its
 training method, not a guarantee of optimal strategy or convergence to a
@@ -49,12 +54,11 @@ using its own hand and the public board. It needs no server or AI subscription.
 
 ## Model stats
 
-| Stat | Current release |
+| Stat | Current source |
 |---|---|
 | Training method | Self-play reinforcement learning using PPO |
-| Network size | Approximately 1.98 million parameters per model |
-| Difficulty levels | Easy, Medium, Hard |
-| Prebuilt player download | Approximately 31.6 MB, including all three models |
+| Network size | One shared model, approximately 1.98 million parameters |
+| Difficulty levels | Easy, Normal, Hard |
 | In-game execution | Local inference; no server or subscription |
 
 ## Install
@@ -69,7 +73,7 @@ using its own hand and the public board. It needs no server or AI subscription.
    **Enable AI** is on by default. Choose the challenge through the game's
    **Gameplay > Gwent difficulty** setting.
 
-The package includes the finished modified Gwent screen and all three policies.
+The player package includes the finished modified Gwent screen and trained weights.
 Python, Java, Node.js and training tools are not needed to play. If you used
 the earlier Python installer, uninstall that version using its original
 download folder before installing this package. Keep one installation of
@@ -82,17 +86,20 @@ this mod active at a time.
 
 - **Enable AI** selects the trained opponent in both story and practice matches.
   Turn it off to use the stock opponent.
-- **Gameplay > Gwent difficulty** selects the trained policy for both story
-  and practice matches. Easy, Normal and Hard select the Easy, Medium and
-  Hard policies respectively.
+- **Gameplay > Gwent difficulty** controls move selection for story and practice.
+  All three levels share one model: Easy varies its choices most, Normal
+  varies them less, and Hard selects its highest-rated moves. After loading a
+  save, the same setting is also available in the mod menu.
 - Practice lets you choose an opponent, using your existing collection.
   Native NPC deck selection stays with the game.
 - Moves run when computation finishes, with no artificial thinking delay.
 - The mod menu contains the AI switch, practice controls and troubleshooting.
 
 The network sees its own hand, public cards, scores and card counts. It does
-not read your hidden hand or either deck's order. Difficulty selects different
-trained policies, rather than granting hidden information or changing cards.
+not read your hidden hand or either deck's order. Difficulty changes move
+selection without granting hidden information or changing cards. The controller
+also passes when that immediately secures the match.
+Lookahead is not enabled.
 
 ## Compatibility and limits
 

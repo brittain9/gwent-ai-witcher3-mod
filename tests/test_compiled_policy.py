@@ -54,6 +54,10 @@ class CompiledPolicyTests(unittest.TestCase):
             ("[[1],[2,3]]", "[[1],[2,4]]"),
             ('"input.weight":0', '"input.weight":1'),
             ("OBSERVATION_SIZE:int = 922", "OBSERVATION_SIZE:int = 923"),
+            (
+                'OBSERVATION_PROFILE_ID:String = "full-faction-v1"',
+                'OBSERVATION_PROFILE_ID:String = "faction-unknown-v1"',
+            ),
         ]:
             with self.subTest(before=before):
                 self.assertIn(before, self.source)

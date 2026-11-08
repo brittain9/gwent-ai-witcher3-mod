@@ -1,5 +1,9 @@
 # How the AI works
 
+This page describes the current source on `main`. The older downloadable
+release uses three separate policies; the shared-model controller awaits a new
+player package.
+
 The opponent uses **self-play reinforcement learning**: a policy learns from
 simulated games against itself, with match outcomes providing the learning
 signal. A neural network rates legal actions from one player's information.
@@ -11,8 +15,8 @@ Winning the match can require giving up a round or saving a useful card.
 The trained model is a policy/value network with a shared representation of
 the visible position and separate action-group, placement and outcome heads.
 Proximal policy optimization updates the policy from completed-game outcomes,
-with damped self-play updates that limit abrupt changes. Different frozen
-checkpoints provide the three difficulty levels.
+with damped self-play updates that limit abrupt changes. One frozen model supplies all
+three difficulty levels; the controller varies move selection.
 
 Training happens before the mod is packaged. During a match, the mod runs
 **policy inference**: it evaluates the current legal actions with fixed
@@ -33,9 +37,16 @@ through the game's native transaction and effect path. There is no artificial
 pause after inference; loading, computation and presentation still take time.
 
 The game's existing Gwent difficulty setting selects the NPC's deck level and
-the trained policy for both story and practice. Easy, Normal and Hard select
-the Easy, Medium and Hard policies respectively. The mod has no separate
-difficulty or stronger-opponent override.
+move selection for both story and practice. All three use the same weights.
+Easy samples at temperature 1, Normal at 0.25, and Hard at zero. Higher
+temperatures vary choices more; these settings do not establish a measured
+strength gap between levels. After loading a save, the
+same control is available in the mod menu. A change in either menu updates
+the shared game setting.
+
+The controller passes when the visible position guarantees an immediate match
+win against a passed opponent. This guard does not solve general round
+commitment or weather conservation.
 
 ## When a decision fails
 
@@ -51,7 +62,7 @@ hands, deck order and unrevealed choices.
 ## Packaging and verification
 
 The prebuilt player package contains the modified Gwent screen, original
-integration scripts and all three trained policies. During the release build,
+integration scripts and one shared trained model. During the release build,
 the tools derive the card vocabulary and effect tables from a compatible
 game, generate the model headers and compile the modified screen. Players
 receive the finished files. The source build tools can also perform this

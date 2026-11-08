@@ -13,6 +13,7 @@ internal class GwaiNetPolicy
    private static const PENDING_KINDS:Array = [null,"mulligan","nurse","leader_resurrect","leader_weather","leader_discard","leader_pick","coin_toss"];
    private static const EFFECT_COUNT:int = 45;
    private static const GLOBAL_SIZE:int = 64;
+   private static const SPARSE_INPUT_V1:Boolean = true;
    private static var FLOAT32_BUFFER:flash.utils.ByteArray = new flash.utils.ByteArray();
    private static var _lastWinChance:Number = NaN;
 
@@ -29,10 +30,22 @@ internal class GwaiNetPolicy
          data.OFFSETS,
          data.WIDTH,
          data.BLOCKS,
-         GwaiNetTierConfig.temperatureFor(difficulty)
+         GwaiNetTierConfig.temperatureFor(difficulty),
+         String(data.OBSERVATION_PROFILE_ID),
+         GwaiNetTierConfig.temperatureFor(difficulty) > 0 ? legacyActionUniforms() : null
       );
       _lastWinChance = winChanceOf(result);
       return result.chosen_action;
+   }
+
+   private static function legacyActionUniforms() : Array
+   {
+      return [legacyUniform(),legacyUniform()];
+   }
+
+   private static function legacyUniform() : Number
+   {
+      return Math.random();
    }
 
    public static function lastWinChance() : Number
@@ -44,7 +57,7 @@ internal class GwaiNetPolicy
    {
       var data:Object = GwaiNetTierConfig.dataFor(difficulty);
       var weights:Vector.<Number> = GwaiNetWeights.load(data);
-      return evaluate(observation,legalActions,data.CARD_IDS,data.CARD_EFFECTS,weights,data.OFFSETS,data.WIDTH,data.BLOCKS,0);
+      return evaluate(observation,legalActions,data.CARD_IDS,data.CARD_EFFECTS,weights,data.OFFSETS,data.WIDTH,data.BLOCKS,0,String(data.OBSERVATION_PROFILE_ID));
    }
 
    public static function winChanceOf(result:Object) : Number
@@ -62,12 +75,20 @@ internal class GwaiNetPolicy
 
    public static function evaluate(observation:Object, legalActions:Array, cardIds:Array, cardEffects:Array,
                                    weights:Vector.<Number>, offsets:Object, width:int, blocks:int,
-                                   temperature:Number = 0.0) : Object
+                                   temperature:Number = 0.0,
+                                   observationProfile:String = "full-faction-v1", actionUniforms:Array = null) : Object
    {
       if(observation == null || legalActions == null || legalActions.length == 0)
          throw new Error("network inference requires a seat observation and legal actions");
-      if(isNaN(temperature) || temperature < 0) throw new Error("policy temperature must be non-negative");
-      var encoded:Vector.<Number> = encodeObservation(observation,cardIds,cardEffects);
+      if(!isFinite(temperature) || temperature < 0) throw new Error("policy temperature must be finite and non-negative");
+      if(temperature > 0)
+      {
+         if(actionUniforms == null || actionUniforms.length != 2) throw new Error("temperature selection requires two owned action uniforms");
+         for(var drawIndex:int = 0; drawIndex < 2; drawIndex++)
+            if(typeof actionUniforms[drawIndex] != "number" || !isFinite(actionUniforms[drawIndex]) || actionUniforms[drawIndex] < 0 || actionUniforms[drawIndex] >= 1)
+               throw new Error("owned action uniform outside [0,1)");
+      }
+      var encoded:Vector.<Number> = encodeObservation(observation,cardIds,cardEffects,observationProfile);
       var observationSize:int = 24 * cardIds.length + 18 * EFFECT_COUNT + GLOBAL_SIZE;
       var trunk:Vector.<Number> = trunkOf(encoded,observationSize,offsets,width,blocks,weights);
       var reading:Object = null;
@@ -140,7 +161,7 @@ internal class GwaiNetPolicy
 
       var groupCandidates:Array = [];
       for(groupIndex = 0; groupIndex < groupLogits.length; groupIndex++) groupCandidates.push(groupIndex);
-      var bestGroup:int = temperature == 0 ? argmax(groupLogits) : sampleLogit(groupLogits,groupCandidates,temperature);
+      var bestGroup:int = temperature == 0 ? argmax(groupLogits) : sampleLogit(groupLogits,groupCandidates,temperature,Number(actionUniforms[0]));
       var bestAction:int = -1;
       var actionCandidates:Array = [];
       for(actionIndex = 0; actionIndex < actionGroupIds.length; actionIndex++)
@@ -149,9 +170,10 @@ internal class GwaiNetPolicy
          actionCandidates.push(actionIndex);
          if(bestAction < 0 || Number(localLogits[actionIndex]) > Number(localLogits[bestAction])) bestAction = actionIndex;
       }
-      if(temperature > 0) bestAction = sampleLogit(localLogits,actionCandidates,temperature);
+      if(temperature > 0) bestAction = sampleLogit(localLogits,actionCandidates,temperature,Number(actionUniforms[1]));
       if(bestAction < 0) throw new Error("network selected a group without a legal action");
       return {
+         observation_profile_id:observationProfile,
          group_logits:groupLogits,
          local_logits:localLogits,
          action_group_ids:actionGroupIds,
@@ -169,8 +191,9 @@ internal class GwaiNetPolicy
    public static function trunkOf(encoded:Vector.<Number>, observationSize:int, offsets:Object, width:int,
                                   blocks:int, weights:Vector.<Number>) : Vector.<Number>
    {
-      var trunk:Vector.<Number> = linear(encoded, observationSize, width,
-         int(offsets["input.weight"]), int(offsets["input.bias"]), weights);
+      var trunk:Vector.<Number> = SPARSE_INPUT_V1 ?
+         sparseInputLinear(encoded,observationSize,width,int(offsets["input.weight"]),int(offsets["input.bias"]),weights) :
+         linear(encoded,observationSize,width,int(offsets["input.weight"]),int(offsets["input.bias"]),weights);
       trunk = silu(layerNorm(trunk,width,int(offsets["input_norm.weight"]),int(offsets["input_norm.bias"]),weights));
       for(var blockIndex:int = 0; blockIndex < blocks; blockIndex++)
       {
@@ -204,8 +227,11 @@ internal class GwaiNetPolicy
       return {loss:loss / total,draw:draw / total,win:win / total,value:(draw * 0.5 + win) / total};
    }
 
-   public static function encodeObservation(observation:Object, cardIds:Array, cardEffects:Array) : Vector.<Number>
+   public static function encodeObservation(observation:Object, cardIds:Array, cardEffects:Array,
+                                            observationProfile:String = "full-faction-v1") : Vector.<Number>
    {
+      if(observationProfile != "full-faction-v1" && observationProfile != "faction-unknown-v1")
+         throw new Error("unsupported model observation profile");
       var vocabSize:int = cardIds.length;
       var powerStart:int = ZONE_NAMES.length * vocabSize;
       var effectStart:int = powerStart + 6 * vocabSize;
@@ -287,7 +313,8 @@ internal class GwaiNetPolicy
       {
          player = relativePlayers[relativeSeat];
          var playerOffset:int = 28 + relativeSeat * 11;
-         var faction:int = int(player.faction == null ? 0 : player.faction);
+         // The model input profile preserves the faction contract used in training.
+         var faction:int = observationProfile == "faction-unknown-v1" ? 0 : int(player.faction == null ? 0 : player.faction);
          if(faction >= 0 && faction < 6) globals[playerOffset + faction] = 1;
          globals[playerOffset + 6] = Math.min(1,Number(player.hand_count || 0) / 20.0);
          globals[playerOffset + 7] = Math.min(1,Number(player.deck_count || 0) / 100.0);
@@ -471,27 +498,64 @@ internal class GwaiNetPolicy
       return best;
    }
 
-   public static function sampleLogit(values:Array, candidates:Array, temperature:Number) : int
+   public static function sampleLogit(values:Array, candidates:Array, temperature:Number, uniform:Number) : int
    {
-      if(candidates == null || candidates.length == 0) throw new Error("cannot sample an empty legal set");
+      if(!isFinite(uniform) || uniform < 0 || uniform >= 1) throw new Error("explicit owned uniform in [0,1) required");
+      var law:Object = temperatureWeights(values,candidates,temperature);
+      var draw:Number = uniform * Number(law.total);
+      var lastSupported:int = -1;
+      for(var index:int = 0; index < candidates.length; index++)
+      {
+         if(Number(law.weights[index]) <= 0) continue;
+         lastSupported = int(candidates[index]);
+         draw -= Number(law.weights[index]);
+         if(draw < 0) return lastSupported;
+      }
+      if(lastSupported < 0) throw new Error("empty sample probability support");
+      return lastSupported;
+   }
+
+   public static function ownedActionUniforms(seed:Object) : Array
+   {
+      if(typeof seed != "number" || !isFinite(Number(seed)) || Number(seed) != Math.floor(Number(seed)) || Number(seed) < 0 || Number(seed) > 4294967295)
+         throw new Error("owned action seed must be uint32");
+      var state:Number = Number(seed) == 0 ? 0x6d2b79f5 : Number(seed);
+      var uniforms:Array = [];
+      for(var draw:int = 0; draw < 2; draw++)
+      {
+         state ^= state << 13;
+         state ^= state >>> 17;
+         state ^= state << 5;
+         uniforms.push(Number(state >>> 0) / 4294967296);
+      }
+      return uniforms;
+   }
+
+   private static function temperatureWeights(values:Array, candidates:Array, temperature:Number) : Object
+   {
+      if(candidates == null || candidates.length == 0 || values == null || !isFinite(temperature) || temperature <= 0)
+         throw new Error("nonempty candidates and explicit positive temperature required");
+      var seen:Object = {};
+      for(var index:int = 0; index < candidates.length; index++)
+      {
+         var candidate:Number = Number(candidates[index]);
+         if(typeof candidates[index] != "number" || !isFinite(candidate) || candidate != int(candidate) || candidate < 0 || candidate >= values.length || seen.hasOwnProperty(String(candidate)))
+            throw new Error("invalid or duplicate sample candidate");
+         if(typeof values[int(candidate)] != "number" || !isFinite(values[int(candidate)])) throw new Error("nonfinite sample logit");
+         seen[String(candidate)] = true;
+      }
       var maximum:Number = Number(values[int(candidates[0])]);
-      for(var index:int = 1; index < candidates.length; index++)
-         maximum = Math.max(maximum,Number(values[int(candidates[index])]));
+      for(index = 1; index < candidates.length; index++) maximum = Math.max(maximum,Number(values[int(candidates[index])]));
       var total:Number = 0;
       var weights:Array = [];
       for(index = 0; index < candidates.length; index++)
       {
          var weight:Number = Math.exp((Number(values[int(candidates[index])]) - maximum) / temperature);
-         weights.push(weight);
-         total += weight;
+         weights.push(weight); total += weight;
       }
-      var draw:Number = Math.random() * total;
-      for(index = 0; index < candidates.length; index++)
-      {
-         draw -= Number(weights[index]);
-         if(draw <= 0) return int(candidates[index]);
-      }
-      return int(candidates[candidates.length - 1]);
+      var probabilities:Array = [];
+      for(index = 0; index < weights.length; index++) probabilities.push(Number(weights[index]) / total);
+      return {weights:weights,total:total,probabilities:probabilities};
    }
 
    public static function zero(length:int) : Vector.<Number>
@@ -522,6 +586,42 @@ internal class GwaiNetPolicy
       if(fourth != null) for(index = 0; index < fourth.length; index++) result[cursor++] = fourth[index];
       if(fifth != null) for(index = 0; index < fifth.length; index++) result[cursor++] = fifth[index];
       return result;
+   }
+
+   // Only the first observation projection calls this flagged specialization.
+   // Weights are the already hash-verified finite exported float32 payload.
+   public static function sparseInputLinear(input:Vector.<Number>, inputSize:int, outputSize:int,
+                                            weightOffset:int, biasOffset:int, weights:Vector.<Number>) : Vector.<Number>
+   {
+      if(input == null || weights == null || inputSize < 0 || outputSize < 0 || input.length != inputSize ||
+         weightOffset < 0 || biasOffset < 0 || weightOffset + inputSize * outputSize > weights.length ||
+         biasOffset + outputSize > weights.length)
+         throw new Error("invalid sparse input projection geometry");
+      var columns:Array = [];
+      var values:Array = [];
+      for(var column:int = 0; column < inputSize; column++)
+      {
+         var value:Number = input[column];
+         if(!isFinite(value)) throw new Error("nonfinite encoded observation feature");
+         if(value != 0)
+         {
+            columns.push(column);
+            values.push(value);
+         }
+      }
+      var output:Vector.<Number> = zero(outputSize);
+      for(var row:int = 0; row < outputSize; row++)
+      {
+         var sum:Number = weights[biasOffset + row];
+         var weightRow:int = weightOffset + row * inputSize;
+         for(var item:int = 0; item < columns.length; item++)
+            sum += weights[weightRow + int(columns[item])] * Number(values[item]);
+         // Removing +/-0 additions can affect only a zero result's sign. Reuse
+         // the original complete row exactly in that case, including underflow.
+         if(sum == 0) sum = linear(input,inputSize,1,weightRow,biasOffset + row,weights)[0];
+         output[row] = sum;
+      }
+      return output;
    }
 
    public static function linear(input:Vector.<Number>, inputSize:int, outputSize:int,

@@ -21,7 +21,11 @@ from learning.encoding import (  # noqa: E402
     observation_size,
 )
 from learning.model import AtaraxosPolicyValue  # noqa: E402
-from scripts.policy_format import write_embed_header  # noqa: E402
+from scripts.policy_format import (  # noqa: E402
+    OBSERVATION_PROFILES,
+    checkpoint_observation_profile,
+    write_embed_header,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CHECKPOINT = PROJECT_ROOT / ".runtime/models/hard.pt"
@@ -35,6 +39,7 @@ def export(
     output_dir: Path,
     *,
     class_name: str = "GwaiNetWeightsData",
+    observation_profile_id: str | None = None,
 ) -> dict[str, object]:
     if not re.fullmatch(r"GwaiNetWeightsData(?:_[A-Za-z0-9]+)?", class_name):
         raise ValueError(
@@ -46,6 +51,10 @@ def export(
     catalog_sha256 = catalog_identity(catalog)
     identity = checkpoint.get("identity", {})
     config = checkpoint.get("model_config", {})
+    checkpoint_sha256 = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()
+    profile = checkpoint_observation_profile(
+        checkpoint_sha256, config, observation_profile_id
+    )
     if identity.get("catalog_sha256") != catalog_sha256:
         raise ValueError("checkpoint catalog hash does not match the selected catalog")
     if config.get("observation_schema_id") != OBSERVATION_SCHEMA_ID:
@@ -93,7 +102,6 @@ def export(
     # preserves the checkpoint values; the runtime Vector.<Number> expands
     # these values to Number as it loads them.
     payload = b"".join(payload_parts)
-    checkpoint_sha256 = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()
     updates = identity.get("updates")
     if type(updates) is not int or updates < 0:
         raise ValueError(
@@ -106,6 +114,7 @@ def export(
     metadata: dict[str, object] = {
         "schema": 1,
         "observation_schema_id": OBSERVATION_SCHEMA_ID,
+        "observation_profile_id": profile,
         "action_schema_id": ACTION_SCHEMA_ID,
         "checkpoint_sha256": checkpoint_sha256,
         "update_count": updates,
@@ -142,9 +151,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--catalog", type=Path, default=DEFAULT_CATALOG)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--class-name", default="GwaiNetWeightsData")
+    parser.add_argument("--observation-profile", choices=OBSERVATION_PROFILES)
     args = parser.parse_args(argv)
     metadata = export(
-        args.checkpoint, args.catalog, args.output_dir, class_name=args.class_name
+        args.checkpoint,
+        args.catalog,
+        args.output_dir,
+        class_name=args.class_name,
+        observation_profile_id=args.observation_profile,
     )
     print(
         json.dumps(
@@ -152,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
                 key: metadata[key]
                 for key in (
                     "checkpoint_sha256",
+                    "observation_profile_id",
                     "update_count",
                     "export_sha256",
                     "catalog_sha256",

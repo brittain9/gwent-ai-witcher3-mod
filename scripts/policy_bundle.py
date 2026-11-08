@@ -25,9 +25,21 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from scripts.policy_format import catalog_identity, write_embed_header
+    from scripts.policy_format import (
+        OBSERVATION_PROFILES,
+        catalog_identity,
+        checkpoint_observation_profile,
+        observation_profile,
+        write_embed_header,
+    )
 except ModuleNotFoundError:
-    from policy_format import catalog_identity, write_embed_header
+    from policy_format import (
+        OBSERVATION_PROFILES,
+        catalog_identity,
+        checkpoint_observation_profile,
+        observation_profile,
+        write_embed_header,
+    )
 
 FORMAT = "witcher3-policy-bundle-v1"
 PROBE_FORMAT = "witcher3-policy-probes-v1"
@@ -41,6 +53,7 @@ MAX_PROBE_BYTES = 256 << 20
 METADATA_FIELDS = (
     "schema",
     "observation_schema_id",
+    "observation_profile_id",
     "action_schema_id",
     "checkpoint_sha256",
     "update_count",
@@ -185,6 +198,12 @@ def _write_json(path: Path, value: Any) -> None:
 
 
 def _validate_metadata(value: Any) -> dict[str, Any]:
+    # Bundles published before explicit profiles used the generic encoder.
+    if isinstance(value, dict):
+        try:
+            value = {**value, "observation_profile_id": observation_profile(value)}
+        except ValueError as exc:
+            raise PolicyBundleError(str(exc)) from exc
     _need(
         isinstance(value, dict) and set(value) == set(METADATA_FIELDS),
         "policy metadata has missing or unexpected fields",
@@ -333,10 +352,16 @@ def load_bundle(bundle_dir: Path) -> PolicyBundle:
         entry = tiers[tier]
         _need(
             isinstance(entry, dict)
-            and set(entry) == set(METADATA_FIELDS) | {"weights_path"},
+            and set(entry)
+            in (
+                set(METADATA_FIELDS) | {"weights_path"},
+                (set(METADATA_FIELDS) - {"observation_profile_id"}) | {"weights_path"},
+            ),
             f"unexpected {tier} policy fields",
         )
-        value = _validate_metadata({key: entry[key] for key in METADATA_FIELDS})
+        value = _validate_metadata(
+            {key: entry[key] for key in METADATA_FIELDS if key in entry}
+        )
         relative = _weight_name(value)
         _need(entry["weights_path"] == relative, "unsafe or noncanonical weight path")
         path = root / relative
@@ -406,6 +431,7 @@ def create_bundle(
     output_dir: Path,
     *,
     probes_path: Path | None = None,
+    observation_profile_id: str | None = None,
 ) -> dict[str, Any]:
     """Create a new sanitized bundle atomically, preserving any existing output."""
     output = Path(output_dir)
@@ -423,8 +449,20 @@ def create_bundle(
             f"missing or symlinked {tier} export",
         )
         source = _read_json(root / "metadata.json")
-        _need(set(METADATA_FIELDS) <= set(source), f"missing {tier} metadata fields")
-        metadata = _validate_metadata({name: source[name] for name in METADATA_FIELDS})
+        try:
+            profile = checkpoint_observation_profile(
+                source.get("checkpoint_sha256"), source, observation_profile_id
+            )
+        except ValueError as exc:
+            raise PolicyBundleError(str(exc)) from exc
+        source = {**source, "observation_profile_id": profile}
+        _need(
+            set(METADATA_FIELDS) - {"observation_profile_id"} <= set(source),
+            f"missing {tier} metadata fields",
+        )
+        metadata = _validate_metadata(
+            {name: source[name] for name in METADATA_FIELDS if name in source}
+        )
         payload = _weights(root / "policy.f32.bin", metadata)
         relative = _weight_name(metadata)
         entries[tier] = {**metadata, "weights_path": relative}
@@ -560,6 +598,7 @@ def main(argv: list[str] | None = None) -> int:
         create.add_argument(f"--{tier}", type=Path, required=True)
     create.add_argument("--output-dir", type=Path, required=True)
     create.add_argument("--probes", type=Path)
+    create.add_argument("--observation-profile", choices=OBSERVATION_PROFILES)
     check = commands.add_parser("check")
     check.add_argument("bundle", type=Path)
     prepare = commands.add_parser("materialize")
@@ -573,6 +612,7 @@ def main(argv: list[str] | None = None) -> int:
                 {tier: getattr(args, tier) for tier in TIERS},
                 args.output_dir,
                 probes_path=args.probes,
+                observation_profile_id=args.observation_profile,
             )
         elif args.command == "check":
             load_bundle(args.bundle)

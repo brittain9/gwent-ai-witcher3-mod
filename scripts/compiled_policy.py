@@ -9,6 +9,11 @@ import json
 import re
 from typing import Any
 
+try:
+    from scripts.policy_format import observation_profile
+except ModuleNotFoundError:
+    from policy_format import observation_profile
+
 CONSTANTS = {
     "CHECKPOINT_SHA256": "checkpoint_sha256",
     "UPDATE_COUNT": "update_count",
@@ -16,6 +21,7 @@ CONSTANTS = {
     "CATALOG_SHA256": "catalog_sha256",
     "WEIGHT_COUNT": "parameter_count",
     "OBSERVATION_SIZE": "observation_size",
+    "OBSERVATION_PROFILE_ID": "observation_profile_id",
     "CARD_COUNT": "card_count",
     "WIDTH": "width",
     "BLOCKS": "blocks",
@@ -68,6 +74,7 @@ def verify(
         )
     checked = []
     for name, metadata in expected.items():
+        metadata = {**metadata, "observation_profile_id": observation_profile(metadata)}
         source = helpers[name]
         if _constant(source, "EMBEDDED") is not True:
             raise ValueError(f"compiled policy {name} is not embedded")

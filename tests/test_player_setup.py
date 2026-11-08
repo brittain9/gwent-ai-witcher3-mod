@@ -566,6 +566,38 @@ class SetupFlowTests(unittest.TestCase):
             self.assertIn("compiler failed", errors.getvalue())
             install.assert_not_called()
 
+    def test_prepare_retry_uses_fresh_paths_and_preserves_previous_package(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            outputs = []
+
+            def run(command, **kwargs):
+                if "--output-dir" in command:
+                    output = Path(command[command.index("--output-dir") + 1])
+                    output.mkdir(parents=True)
+                    (output / "manifest.json").write_text(
+                        json.dumps({"status": "offline_compiled_and_export_verified"})
+                    )
+                    outputs.append(output)
+
+            def assemble(_variant, *, build_dir, package_dir):
+                package_dir.mkdir()
+                (package_dir / "preserved").write_text(str(build_dir))
+                return package_dir
+
+            installer = setup_player._installer()
+            with (
+                patch.object(setup_player, "run_step", side_effect=run),
+                patch.object(installer, "assemble_package", side_effect=assemble),
+                patch.object(installer, "_read_package"),
+            ):
+                first = setup_player.prepare(root, root / "game", {})
+                second = setup_player.prepare(root, root / "game", {})
+            self.assertNotEqual(first, second)
+            self.assertNotEqual(outputs[0], outputs[1])
+            self.assertTrue((first / "preserved").is_file())
+            self.assertTrue((second / "preserved").is_file())
+
     def test_pipeline_uses_distribution_root_and_stops_after_failed_step(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
