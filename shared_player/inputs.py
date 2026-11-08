@@ -33,7 +33,8 @@ def source_manifest(root=ROOT):
     return {
         "format": "shared-player-source-v1",
         "files": {
-            str(p.relative_to(root)): descriptor(p)["sha256"] for p in sorted(paths)
+            p.relative_to(root).as_posix(): descriptor(p)["sha256"]
+            for p in sorted(paths)
         },
     }
 

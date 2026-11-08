@@ -348,7 +348,7 @@ def verify_running_source(source_manifest_path):
             location.is_relative_to(root / "shared_player"),
             "loaded shared module source tree differs: " + name,
         )
-        relative = str(location.relative_to(root))
+        relative = location.relative_to(root).as_posix()
         _need(
             relative in entries and _sha(location) == entries[relative],
             "loaded shared module source hash differs: " + name,

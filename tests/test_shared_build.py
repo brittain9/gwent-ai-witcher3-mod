@@ -122,3 +122,4 @@ class SharedBuildTests(unittest.TestCase):
         self.assertIn("shared_player/compiler.py", files)
         self.assertIn("mod/ai/as3/GwaiSharedController.as", files)
         self.assertFalse(any(Path(name).is_absolute() for name in files))
+        self.assertFalse(any("\\" in name for name in files))

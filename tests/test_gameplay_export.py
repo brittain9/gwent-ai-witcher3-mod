@@ -164,6 +164,58 @@ def producer_fixture(root):
     return Path(plan_spec["path"]), plan, result, episodes
 
 
+class RuntimeSourcePathTests(unittest.TestCase):
+    def test_portable_inventory_preserves_hash_and_rejects_unsafe_aliases(self):
+        from shared_player.gameplay_export import _runtime_identity
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            entries = []
+            for name in (
+                "pyproject.toml",
+                "uv.lock",
+                "shared_learning/onpolicy_run.py",
+                "shared_learning/onpolicy_training.py",
+            ):
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"authored source")
+                entries.append(
+                    {
+                        "relative": name,
+                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    }
+                )
+            digest = hashlib.sha256()
+            for item in sorted(entries, key=lambda row: row["relative"]):
+                digest.update(
+                    item["relative"].encode() + b"\0" + item["sha256"].encode() + b"\n"
+                )
+            manifest = root / "source-manifest.json"
+            manifest.write_text(json.dumps({"files": entries}))
+            _runtime_identity(manifest, digest.hexdigest())
+            for unsafe in (
+                "../pyproject.toml",
+                "/pyproject.toml",
+                "C:/pyproject.toml",
+                r"C:\pyproject.toml",
+                r"shared_learning\onpolicy_run.py",
+                "C:pyproject.toml",
+            ):
+                changed = copy.deepcopy(entries)
+                changed[0]["relative"] = unsafe
+                manifest.write_text(json.dumps({"files": changed}))
+                with (
+                    self.subTest(path=unsafe),
+                    self.assertRaisesRegex(ValueError, "invalid/duplicate"),
+                ):
+                    _runtime_identity(manifest, digest.hexdigest())
+            manifest.write_text(json.dumps({"files": entries}))
+            (root / "shared_learning/onpolicy_run.py").write_bytes(b"altered")
+            with self.assertRaisesRegex(ValueError, "source changed"):
+                _runtime_identity(manifest, digest.hexdigest())
+
+
 class GameplayExportIdentityTests(unittest.TestCase):
     def test_genuine_identity_preserves_completed_steps_and_native_scope_without_defaults(
         self,

@@ -375,7 +375,9 @@ assert.equal(sent.at(-1).args[0],'truncated');
             .replace("DIAGNOSTIC", diagnostic_javascript())
             .replace("FIXTURE", json.dumps(fixture()))
         )
-        result = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
+        result = subprocess.run(
+            ["node"], input=harness, capture_output=True, encoding="utf-8"
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_actual_sink_is_automatic_separate_bounded_and_records_failure(self):
@@ -405,7 +407,9 @@ assert.equal(run('OnW3GwentPolicyDiagnosticRecord',{record:'{}'}),false);assert.
 assert.equal(run('OnW3GwentPolicyDiagnosticStart',{build:'a'.repeat(64)}),true);
 run('OnW3GwentPolicyDiagnosticError',{message:'capture failed'});assert.equal(saved.t000000002_status,'error');assert.equal(saved.t000000002_error,'capture failed');
 """.replace("BODIES", json.dumps(bodies))
-        result = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
+        result = subprocess.run(
+            ["node"], input=harness, capture_output=True, encoding="utf-8"
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
@@ -592,7 +596,7 @@ process.stdout.write(JSON.stringify({records,identity,failedRecords:failedEvents
                 script,
             )
             captured = subprocess.run(
-                ["node", "-e", script], capture_output=True, text=True
+                ["node"], input=script, capture_output=True, encoding="utf-8"
             )
             self.assertEqual(captured.returncode, 0, captured.stderr)
             payload = json.loads(captured.stdout)

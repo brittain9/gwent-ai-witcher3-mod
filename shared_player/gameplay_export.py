@@ -8,7 +8,7 @@ import hashlib
 import json
 import re
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from .bundle import METADATA_FIELDS, _payload, _write, validate_metadata
 
@@ -193,24 +193,31 @@ def _runtime_identity(source_manifest, expected):
     selected = []
     seen = set()
     for item in entries:
-        relative = Path(item["relative"])
+        raw = item["relative"]
+        _need(isinstance(raw, str) and bool(raw), "invalid training source path")
+        windows = PureWindowsPath(raw)
+        relative = PurePosixPath(raw)
+        canonical = relative.as_posix()
         _need(
-            not relative.is_absolute()
+            "\\" not in raw
+            and not relative.is_absolute()
+            and not windows.drive
+            and not windows.root
             and ".." not in relative.parts
-            and str(relative) not in seen,
+            and canonical not in seen,
             "invalid/duplicate training source path",
         )
-        seen.add(str(relative))
-        if str(relative) in {"pyproject.toml", "uv.lock"} or (
+        seen.add(canonical)
+        if canonical in {"pyproject.toml", "uv.lock"} or (
             relative.suffix == ".py"
             and relative.parts[0]
             in {"learning", "w3gwent", "scripts", "shared_learning"}
         ):
             _need(
-                _sha(root / relative) == item["sha256"],
+                _sha(root.joinpath(*relative.parts)) == item["sha256"],
                 "training runtime source changed",
             )
-            selected.append((str(relative), item["sha256"]))
+            selected.append((canonical, item["sha256"]))
     _need(
         {
             "pyproject.toml",
@@ -222,7 +229,7 @@ def _runtime_identity(source_manifest, expected):
         "training source inventory incomplete",
     )
     actual_files = {
-        str(path.relative_to(root))
+        path.relative_to(root).as_posix()
         for folder in ("learning", "w3gwent", "scripts", "shared_learning")
         for path in (root / folder).rglob("*.py")
     }
