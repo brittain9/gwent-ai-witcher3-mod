@@ -54,7 +54,8 @@ def producer_fixture(root):
     def write(name, value):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(value) if not isinstance(value, str) else value)
+        payload = json.dumps(value) if not isinstance(value, str) else value
+        path.write_bytes(payload.encode("utf-8"))
         return {
             "path": str(path),
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
