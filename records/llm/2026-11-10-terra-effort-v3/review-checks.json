@@ -1,0 +1,22 @@
+{
+  "checks": [
+    {
+      "schema": "w3gwent-review-check-v1",
+      "game_id": "high-nilf-monster-network",
+      "report_decision_id": 30,
+      "action_decision_id": 29,
+      "source_journal_sha256": "ca37e5f28cda7f0c3cd54cac8ccf1c456ef773bb5400263fc68f47848c665cf2",
+      "observed_before_scores": [
+        38,
+        40
+      ],
+      "observed_after_scores": [
+        32,
+        40
+      ],
+      "verified_claim": "Scorch reduced the acting opponent score by six and did not reduce the player score. Any death-trigger effects are included in the settled result.",
+      "evidence": "source transition reproduced during action-record replay",
+      "not_established": "A superior continuation or different match winner. Passing was also behind; the report is not an optimal-action label."
+    }
+  ]
+}

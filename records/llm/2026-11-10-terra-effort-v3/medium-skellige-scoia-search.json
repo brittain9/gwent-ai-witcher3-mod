@@ -1,0 +1,726 @@
+{
+  "schema": "w3gwent-action-record-v1",
+  "game_id": "medium-skellige-scoia-search",
+  "scenario_id": "skellige-scoia-search",
+  "session_id": "2b49afc2c7a14d75a55e58b267451fa1",
+  "model": "gpt-6.1-terra",
+  "reasoning_effort": "medium",
+  "seat": 0,
+  "eligibility": "exploratory_unvalidated",
+  "completed": true,
+  "status": "completed",
+  "visibility": "offline_full_match_actions; reconstruct seat views before training",
+  "source_journal_sha256": "95c6ee006c2253d31aeb9de7182a594bf60c868eacb4710c70bd3fb694e53080",
+  "engine_sha256": "b0ed17b07a3122710fe7348de7d55254f9b2f64912d106f5ebcb9de5c90ca180",
+  "cards_sha256": "2288e0eb3f38b3c19f117d8f185984bab008788c510d87dadab99e2da5974195",
+  "prompt_version": "player-v3+mechanics-v2+review-v2",
+  "prompt_sha256": {
+    "docs/llm-play/player-v3.md": "44e5582e63307056f6a42bdce71d49576f13568fe564ebef1d30132dff4f6315",
+    "docs/llm-play/mechanics-v2.md": "9113646d99d91911e778136adf226fa0e9d7ca5516d11712bac136ac9cef63a3",
+    "docs/llm-play/review-v2.md": "ded93ec37d5dff3eae0e0da00056b4506cbbd8dc37b7036247db8bbfdfa1053a"
+  },
+  "policy_sha256": {
+    "metadata": "e73390dea694f84bd4745e1509d615b97ae179a9820296b810036979339dc72d",
+    "weights": "4fbf020119a4e7e8459afaf1eda4d6e1b37b2f61cc6066db9df507b7823bfea6"
+  },
+  "opponent": {
+    "op": "network_search",
+    "belief": "faction_pool",
+    "rollout_budget": 32,
+    "world_budget": 4,
+    "deadline_ms": 1000,
+    "world_seeds": [
+      64121,
+      64122,
+      64123,
+      64124
+    ],
+    "leaf_decisions": 1
+  },
+  "setup": {
+    "decks": [
+      [
+        22,
+        22,
+        1,
+        1,
+        2,
+        2,
+        4,
+        28,
+        20,
+        17,
+        504,
+        509,
+        9,
+        15,
+        16,
+        12,
+        502,
+        513,
+        515,
+        515,
+        515,
+        520,
+        520,
+        520,
+        521,
+        521,
+        521,
+        523,
+        523,
+        523
+      ],
+      [
+        3,
+        1,
+        1,
+        2,
+        2,
+        0,
+        4,
+        28,
+        301,
+        302,
+        28,
+        301,
+        302,
+        9,
+        15,
+        16,
+        12,
+        300,
+        303,
+        305,
+        306,
+        308,
+        309,
+        313,
+        320,
+        321,
+        322,
+        325,
+        326,
+        365,
+        366,
+        367
+      ]
+    ],
+    "leaders": [
+      5002,
+      3003
+    ],
+    "factions": [
+      5,
+      4
+    ],
+    "seed": 941704,
+    "seat_kind": [
+      "human",
+      "ai"
+    ],
+    "first_player": 0
+  },
+  "opening_response_sha256": "0a32fc6786c747cf9c0a9e265ff813dff5cb7b37edd38dd1b89564775b3f54d5",
+  "commands": [
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 0,
+        "action": {
+          "id": "mulligan:10",
+          "instance_id": 10,
+          "kind": "mulligan"
+        }
+      },
+      "response_sha256": "f726567c46eab11b0451450a10f1e521da5d2ea94ce780ba0b342f4ad487f1be"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 1,
+        "action": {
+          "id": "mulligan:11",
+          "instance_id": 11,
+          "kind": "mulligan"
+        }
+      },
+      "response_sha256": "2d4b8bc17184d857717052cb913ac3b9a4043ce420f5a07962681456b364cab0"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 2,
+        "action": {
+          "id": "play:4:ranged",
+          "instance_id": 4,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "236b6ad91b324b29a8d871aa415749b6db64b69d2eab65fb0863d36f9c7bc84d"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 3,
+        "action": {
+          "id": "leader:2",
+          "instance_id": 2,
+          "kind": "leader"
+        }
+      },
+      "response_sha256": "5fa352e5093ffe566ae4e294a5ac60bdd6cbc1cc70d700331c3cafb138ac811d"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 4,
+        "action": {
+          "id": "play:24:melee",
+          "instance_id": 24,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "234b71fd6db2e7037c74c48bfc512cb10f2902351a5dc05f7a60b1069bb04847"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 5,
+        "action": {
+          "id": "play:15:melee",
+          "instance_id": 15,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "e0195b56bc0860c97f06b05cb41d4721b33f848f26777c6805d7cf7d6b9ca11c"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 6,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "7dbf195b1a7fa99046d46ed928ccc7605e55912c3698110c4ba3b7630eac082e"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 7,
+        "action": {
+          "id": "play:13:ranged",
+          "instance_id": 13,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "bd2170efc4c77e11a17235803a3d7ccfc82d759ed55a895dffe8c234b2b74db6"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 8,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "549822806c74da37e9d78b94fcec3299bb12117ebd9555735c183537412ec826"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 9,
+        "action": {
+          "id": "play:20:ranged",
+          "instance_id": 20,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "3fff3eab5a960c6855b800f40e1e847a4d44f7fa2600c6d6f77e50017d5c6705"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 10,
+        "action": {
+          "id": "play:3:ranged",
+          "instance_id": 3,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "acf94a632ef8480605fa63ff3d77855bd551de6644a30ed98b5f23feda83a041"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 11,
+        "action": {
+          "id": "play:16:melee",
+          "instance_id": 16,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "56d10f196e22cf6f9e9642a0c37e1799c174e487f58a9607eca87533e827190d"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 12,
+        "action": {
+          "id": "play:12:ranged",
+          "instance_id": 12,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "0d01508654863715ffee15548ea9265f1ab7da4c20aa4dc6fd17e5f7c9455b91"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 13,
+        "action": {
+          "id": "play:22:melee",
+          "instance_id": 22,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "9f2fe02fb31a753195bd1a9156490de59d7eb6f26faf9265a1a0e63c13b36a5a"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 14,
+        "action": {
+          "id": "play:5:melee",
+          "instance_id": 5,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "39eb6e3800f72a2f6987d4724e8c2d4e1a687cad40dd42a9194adb986037e0d3"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 15,
+        "action": {
+          "id": "play:26:melee",
+          "instance_id": 26,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "fb76286e883a2da466284b7303f8750d456d38e324f687269c0ed9a6d271a3e4"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 16,
+        "action": {
+          "id": "play:7:melee",
+          "instance_id": 7,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "9963d4759243a8b10fe4d57edaab1dfd536d832814b90efaaa9d1d7357395492"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 17,
+        "action": {
+          "id": "play:18",
+          "instance_id": 18,
+          "kind": "play"
+        }
+      },
+      "response_sha256": "78cbb66bedeed0909b11c0cfc7d0e6b30e6763ff90547e82ddb0127533bd8a0a"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 18,
+        "action": {
+          "id": "play:23:siege",
+          "instance_id": 23,
+          "kind": "play",
+          "row": "siege"
+        }
+      },
+      "response_sha256": "10e2f536f1671f2177746e266c77fb14eabf127edc3a582eed2020239b09915a"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 19,
+        "action": {
+          "id": "play:27:ranged",
+          "instance_id": 27,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "a1e2a13ed8119475529e866050f93ec10183578411bc712cef9c424df5e369b3"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 20,
+        "action": {
+          "id": "choice:13",
+          "instance_id": 13,
+          "kind": "choice"
+        }
+      },
+      "response_sha256": "4f8579bc0ed312ad198f20d9bebd60994376ba734957c1e6a01b36b722bda6e1"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 21,
+        "action": {
+          "id": "play:8:melee",
+          "instance_id": 8,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "dac0dd0f48d6b3d1ecf49b576ab6b6514b37608caaf87d71b56b451556f4ceb4"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 22,
+        "action": {
+          "id": "play:19:ranged",
+          "instance_id": 19,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "d44832c9ca60028bbdd1b7ce95cb3982c503386b5eabf7987bad0bed67747754"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 23,
+        "action": {
+          "id": "play:9:melee",
+          "instance_id": 9,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "cb21e340cf3b35f17b0642b6331f8b975e020b4a27383aad1a95f3c28bdb3d2a"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 24,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "b54589ba9a557de303d30a627da29ecc11b9b0448b487faa90d6618c6aa3fd54"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 25,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "8793afcc8f6704fad0696f8321c62e1db1901fa39055c89d2d13e6299da33b0d"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 26,
+        "action": {
+          "id": "leader:1",
+          "instance_id": 1,
+          "kind": "leader"
+        }
+      },
+      "response_sha256": "48e5d78bf83a92864f61464bc8be2d571872746908d4ebdd08a064fb39dd4681"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 27,
+        "action": {
+          "id": "play:14:ranged",
+          "instance_id": 14,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "64d34ef6cfd7a04b6d7866465a812df815fc628aa83059fb2239e3d2df6f9957"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 28,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "95061bb412ff529bde30e720db4466355c6f7d4ccb240efe57f8f86a6035f3d9"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 29,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "484a9a2ba14c8cbe6a83f750bb42f3b29350c0c71f2f54877899b54cbd68c18d"
+    }
+  ],
+  "notes": [
+    {
+      "decision_id": 0,
+      "seat": 0,
+      "note": "A second Light Drakkar is redundant with its muster effect.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 1,
+      "seat": 0,
+      "note": "Young Berserker has two power without a Mardroeme in hand.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 2,
+      "seat": 0,
+      "note": "Cow can summon an eight-power unit at cleanup.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 4,
+      "seat": 0,
+      "note": "Roach adds three points while preserving stronger combinations.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 6,
+      "seat": 0,
+      "note": "Leading 3 to 0, pass to force a response and preserve cards.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 10,
+      "seat": 0,
+      "note": "Light Drakkar summons its matching units and builds the lead.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 12,
+      "seat": 0,
+      "note": "Young Berserker adds two points while retaining the melee combination.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 14,
+      "seat": 0,
+      "note": "Dandelion doubles the eight-point Cow Czart and adds two.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 16,
+      "seat": 0,
+      "note": "Olgierd benefits from the melee Horn and boosts the other units.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 18,
+      "seat": 0,
+      "note": "War Drakkar adds six points outside the Frost row.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 21,
+      "seat": 0,
+      "note": "Shieldmaiden adds points through morale and Horn despite Frost.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 23,
+      "seat": 0,
+      "note": "A second Shieldmaiden strengthens both through Tight Bond.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 25,
+      "seat": 0,
+      "note": "The opponent passed at 21 and our score is 40.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 26,
+      "seat": 0,
+      "note": "The leader returns graveyard units to decks and may deny a medic target.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 28,
+      "seat": 0,
+      "note": "Fog cannot reduce the opposing hero and would reduce our ranged unit.",
+      "status": "unvalidated_hypothesis"
+    }
+  ],
+  "terminal": {
+    "rounds": [
+      {
+        "round": 1,
+        "scores": [
+          3,
+          12
+        ],
+        "winner": 1
+      },
+      {
+        "round": 2,
+        "scores": [
+          40,
+          21
+        ],
+        "winner": 0
+      },
+      {
+        "round": 3,
+        "scores": [
+          4,
+          7
+        ],
+        "winner": 1
+      }
+    ],
+    "winner": 1
+  },
+  "reports": [
+    {
+      "schema": "w3gwent.llm_report.v1",
+      "validation": "unvalidated",
+      "session_id": "2b49afc2c7a14d75a55e58b267451fa1",
+      "decision_id": 23,
+      "label": "own-mistake",
+      "report": "At 32 to 21 I played the second Shieldmaiden; passing was legal and could preserve it for round three. The opponent had three unknown cards and might have overtaken 32, so this is uncertain. Replay both choices against the same hidden hand and compare match outcomes."
+    }
+  ],
+  "verification": {
+    "portable_action_replay": "passed",
+    "actions": 30,
+    "reports": "unvalidated",
+    "tool_access_audit": "not_performed"
+  }
+}

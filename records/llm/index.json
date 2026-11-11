@@ -1,0 +1,14 @@
+{
+  "schema": "w3gwent-corpus-summary-v1",
+  "completed": 29,
+  "partial": 1,
+  "engine_actions": 907,
+  "unvalidated_reports": 43,
+  "batch_indexes": [
+    "2026-11-10-terra-effort-v3/index.json"
+  ],
+  "replay": "all exported action records reconstructed and response hashes checked",
+  "connector_tests": 27,
+  "engine_library_tests": 136,
+  "engine_integration_tests": 52
+}

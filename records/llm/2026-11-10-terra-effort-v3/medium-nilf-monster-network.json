@@ -1,0 +1,328 @@
+{
+  "schema": "w3gwent-action-record-v1",
+  "game_id": "medium-nilf-monster-network",
+  "scenario_id": "nilf-monster-network",
+  "session_id": "84f738a84ce74670aa84b8befbbea97f",
+  "model": "gpt-6.1-terra",
+  "reasoning_effort": "medium",
+  "seat": 1,
+  "eligibility": "exploratory_unvalidated",
+  "completed": false,
+  "status": "closed_incomplete",
+  "visibility": "offline_full_match_actions; reconstruct seat views before training",
+  "source_journal_sha256": "56b4098038b3cae1faae8183e377925f211f0580d1c4a714d44844d414f83a37",
+  "engine_sha256": "b0ed17b07a3122710fe7348de7d55254f9b2f64912d106f5ebcb9de5c90ca180",
+  "cards_sha256": "2288e0eb3f38b3c19f117d8f185984bab008788c510d87dadab99e2da5974195",
+  "prompt_version": "player-v3+mechanics-v2+review-v2",
+  "prompt_sha256": {
+    "docs/llm-play/player-v3.md": "44e5582e63307056f6a42bdce71d49576f13568fe564ebef1d30132dff4f6315",
+    "docs/llm-play/mechanics-v2.md": "9113646d99d91911e778136adf226fa0e9d7ca5516d11712bac136ac9cef63a3",
+    "docs/llm-play/review-v2.md": "ded93ec37d5dff3eae0e0da00056b4506cbbd8dc37b7036247db8bbfdfa1053a"
+  },
+  "policy_sha256": {
+    "metadata": "01f991c715a62a08147bf83dd7d2e7b6d25d175ba89652c0ce80016fe15f2564",
+    "weights": "a4c9570fe65fc2cdaa044d1c1bff6b28f6fea045c38562e7f30ecd7091e227ab"
+  },
+  "opponent": {
+    "op": "network_probe"
+  },
+  "setup": {
+    "decks": [
+      [
+        1,
+        2,
+        0,
+        4,
+        3,
+        2,
+        1,
+        2,
+        15,
+        402,
+        476,
+        451,
+        16,
+        401,
+        403,
+        407,
+        450,
+        452,
+        455,
+        456,
+        457,
+        460,
+        463,
+        461,
+        462,
+        464,
+        470,
+        471,
+        472,
+        475,
+        477
+      ],
+      [
+        0,
+        1,
+        2,
+        2,
+        6,
+        0,
+        0,
+        1,
+        218,
+        200,
+        230,
+        201,
+        202,
+        203,
+        208,
+        213,
+        214,
+        231,
+        235,
+        236,
+        240,
+        241,
+        260,
+        261
+      ]
+    ],
+    "leaders": [
+      4003,
+      2004
+    ],
+    "factions": [
+      1,
+      2
+    ],
+    "seed": 941701,
+    "seat_kind": [
+      "ai",
+      "human"
+    ],
+    "first_player": 1
+  },
+  "opening_response_sha256": "4c3e0867a46adfd30bb28d8be3604887aaa0efed56fb7d44217f0837b95c0b19",
+  "commands": [
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 0,
+        "action": {
+          "id": "mulligan:22",
+          "instance_id": 22,
+          "kind": "mulligan"
+        }
+      },
+      "response_sha256": "3775ec9525b09f8f66904735980b5e1f33b2924fbc2e4ba845529aee503781c5"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 1,
+        "action": {
+          "id": "mulligan:21",
+          "instance_id": 21,
+          "kind": "mulligan"
+        }
+      },
+      "response_sha256": "f96ae8573e02b21e3e275cf59ca4bbbd00459f9c13cef49231b706cbb0aa4db7"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 2,
+        "action": {
+          "id": "play:18:melee",
+          "instance_id": 18,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "2d61c6e0cc83002f8e2ad65f9e4989b339ab28e7b3e2eeeb1e32567921a3b502"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 3,
+        "action": {
+          "id": "leader:1",
+          "instance_id": 1,
+          "kind": "leader"
+        }
+      },
+      "response_sha256": "ef8c8c0817f54ecdd6cae9b7ae6e71fc8b03a97b7772eb0079b87f6cc0b9b0a2"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 4,
+        "action": {
+          "id": "play:14:melee",
+          "instance_id": 14,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "1df342ef762953f1f6ee0f0399af2918a7ba205e0b4d3f6e9019ca55490fbcb8"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 5,
+        "action": {
+          "id": "play:9:melee",
+          "instance_id": 9,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "4cc68cb6a5f76dffee6f3ae23a8db60781c09cefa7f59530b5c4ddbc29faf8e0"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 6,
+        "action": {
+          "id": "play:20:target:14",
+          "instance_id": 20,
+          "kind": "play",
+          "target_instance_id": 14
+        }
+      },
+      "response_sha256": "273f81b914788e74b159595dac0a1c6b0ad6a31fd755a4487254dbb3838cf7b0"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 7,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "d17a22fff46b0a1ed56d0cd5a5ab40f04cbc612d2d47551a68888a4df54aca90"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 8,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "e6c756ef15cde1da6311a083d5a8604daf55d4f7c583d60b9c2ced9a2a2df745"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 9,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "ff28b420947ad594fd18f3b4a8849717b55c2f00f70f4095baef104dae99e973"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 10,
+        "action": {
+          "id": "play:15:melee",
+          "instance_id": 15,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "a10b12a387310a7772fa6f0c5976b9bceee59b2812d3ea28939a35163342f6a7"
+    }
+  ],
+  "notes": [
+    {
+      "decision_id": 0,
+      "seat": 1,
+      "note": "Archer Support has one strength and no graveyard target yet.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 1,
+      "seat": 1,
+      "note": "One Decoy remains, while the second has no guaranteed target.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 2,
+      "seat": 1,
+      "note": "Shilard draws two cards while the deck has 14 cards.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 4,
+      "seat": 1,
+      "note": "Both linked Emissaries are in hand and can strengthen each other.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 6,
+      "seat": 1,
+      "note": "The opponent leads 28 to 5; Decoy preserves the Emissary and its bond partner.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 8,
+      "seat": 1,
+      "note": "The opponent has passed at 28; passing preserves ten cards for the remaining rounds.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 10,
+      "seat": 1,
+      "note": "The opponent passed at four; the five-strength Emissary takes the lead.",
+      "status": "unvalidated_hypothesis"
+    }
+  ],
+  "terminal": null,
+  "reports": [],
+  "verification": {
+    "portable_action_replay": "passed",
+    "actions": 11,
+    "reports": "unvalidated",
+    "tool_access_audit": "not_performed"
+  }
+}

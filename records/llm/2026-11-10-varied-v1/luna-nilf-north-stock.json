@@ -1,0 +1,907 @@
+{
+  "schema": "w3gwent-action-record-v1",
+  "game_id": "luna-nilf-north-stock",
+  "scenario_id": "nilf-north-stock",
+  "session_id": null,
+  "model": "gpt-6-luna",
+  "reasoning_effort": "xhigh",
+  "seat": 0,
+  "eligibility": "exploratory_unvalidated",
+  "completed": true,
+  "status": "completed",
+  "visibility": "offline_full_match_actions; reconstruct seat views before training",
+  "source_journal_sha256": "427e1175d588edece413490b96b51b16d1471297424d9df647d219f7b6f1de0c",
+  "engine_sha256": "b0ed17b07a3122710fe7348de7d55254f9b2f64912d106f5ebcb9de5c90ca180",
+  "cards_sha256": "2288e0eb3f38b3c19f117d8f185984bab008788c510d87dadab99e2da5974195",
+  "prompt_version": "player-v1+mechanics-v1+review-v1",
+  "prompt_sha256": {
+    "docs/llm-play/player-v1.md": "2a7d1719d1c717ddf57d97b29bec330349504bd2e325dd2e30bb89082aeeb472",
+    "docs/llm-play/mechanics-v1.md": "14e1629386671bdddc0b9fa86be92fb82bae32238ebd67ae2ab82c81340690c4",
+    "docs/llm-play/review-v1.md": "440dee63114a260d0b7d333242fcf34d16cd9f4520c9dc97dbd0409634be01fe"
+  },
+  "policy_sha256": {},
+  "opponent": {
+    "op": "stock_act"
+  },
+  "setup": {
+    "decks": [
+      [
+        4,
+        3,
+        0,
+        1,
+        1,
+        2,
+        2,
+        218,
+        200,
+        231,
+        235,
+        15,
+        16,
+        201,
+        202,
+        203,
+        208,
+        213,
+        214,
+        230,
+        236,
+        240,
+        241,
+        245,
+        246,
+        247,
+        250,
+        251,
+        252
+      ],
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        4,
+        3,
+        1,
+        2,
+        28,
+        9,
+        11,
+        12,
+        100,
+        101,
+        102,
+        103,
+        105,
+        109,
+        116,
+        111,
+        121,
+        120,
+        140,
+        141,
+        145,
+        146,
+        150,
+        175
+      ]
+    ],
+    "leaders": [
+      2003,
+      1003
+    ],
+    "factions": [
+      2,
+      3
+    ],
+    "seed": 831700,
+    "first_player": 0,
+    "seat_kind": [
+      "human",
+      "ai"
+    ]
+  },
+  "opening_response_sha256": "7662d037ebb4faecebb19848e783c577d0e48c320b3b152024cb556f3ed3bf52",
+  "commands": [
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 0,
+        "action": {
+          "id": "mulligan:10",
+          "instance_id": 10,
+          "kind": "mulligan"
+        }
+      },
+      "response_sha256": "7350425fb2572a304f4b55f5bcfabbb6f6fb7725d7319882e08fad7f6d247eed"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 1,
+        "action": {
+          "id": "mulligan:decline",
+          "kind": "decline_mulligan"
+        }
+      },
+      "response_sha256": "86963d59282deb4680886574feb876884c122c6deb3dd7b77520b6a345ecc706"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 2,
+        "action": {
+          "id": "play:3:melee",
+          "instance_id": 3,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "20f8bf2b350c68c5edf180b117be84aa8fecd1e8fd31faee75374ef741be388f"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 3271423999
+      },
+      "response_sha256": "1e4ffeb59f28de054c8aa21b6bd0d3bdca1d5b097a89eeccb88eec27c84d208c"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 3,
+        "action": {
+          "id": "play:19:siege",
+          "instance_id": 19,
+          "kind": "play",
+          "row": "siege"
+        }
+      },
+      "response_sha256": "83c3e6014e229ce754477d1a95c2decc0373b5df70f7f6ad7d3bbb1ed427d72e"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 4,
+        "action": {
+          "id": "play:5:melee",
+          "instance_id": 5,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "4965a1b11bb3ced5557c13067cbb2dc33a57d3ea66e76e0358595deed7bfbf7c"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 2472045742
+      },
+      "response_sha256": "e16d0d834a2ae32b112d8187fb9e1f1c5b86815c7df5270d30916a1dd265f894"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 5,
+        "action": {
+          "id": "play:14:melee",
+          "instance_id": 14,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "6c9eb1663ac256954bb10a0e24ebc991e33b247258160ded163078b25f94609b"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 6,
+        "action": {
+          "id": "play:11:melee",
+          "instance_id": 11,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "6389df30d9d0159c72dbe09bd43ab55b3c74dbcc0154a86f50716b95ae8144b7"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 553302667
+      },
+      "response_sha256": "4cc2628b0d0baad4d71a6e0a1e22f1bfaaed5ee6495c72399fd6868c6c084d27"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 7,
+        "action": {
+          "id": "play:13:siege",
+          "instance_id": 13,
+          "kind": "play",
+          "row": "siege"
+        }
+      },
+      "response_sha256": "bc78bc47ccdbe41d4a9daf215569ad367ef2e1d92bdb45390ea546eb5c974302"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 8,
+        "action": {
+          "id": "play:25:melee",
+          "instance_id": 25,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "cc3f2d9dbed2638f61aec4c256a71dff75ef28a27c56d873c32286b6fa2a42c3"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 127879153
+      },
+      "response_sha256": "ae0146f319b234b7e926a877ac376ab39bc619ead7f94946360081a2b622a972"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 9,
+        "action": {
+          "id": "play:18:siege",
+          "instance_id": 18,
+          "kind": "play",
+          "row": "siege"
+        }
+      },
+      "response_sha256": "806bd896d3efffe39dad6df2040a9bcbe39dfb1e9badb4c98d5d9e74ecb1bd80"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 10,
+        "action": {
+          "id": "play:6:ranged",
+          "instance_id": 6,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "0dcd8de0081c7ee0d7e1aec3483e0432f192318e96c66aa0bfd31bc18e58c4b7"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 1965991695
+      },
+      "response_sha256": "87a2c57c6c37bdd7b0cead942a477121088e2d87beb223db4a4ce9f8cc69e513"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 11,
+        "action": {
+          "id": "play:20:melee",
+          "instance_id": 20,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "b3d95a414c33e8c6d0fb9c3cc04fea6c9c8fa5c446be5c7daf169f293bd1302d"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 12,
+        "action": {
+          "id": "play:24:melee",
+          "instance_id": 24,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "337e62c91d8c20f2b827936682149729fddf305bdbf2d760ff01b348a3a70719"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 2959208372
+      },
+      "response_sha256": "a9c70201ec5f3167a077b67664e4d651b4538d6e01dd0c3329658c63cf7c58fb"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 13,
+        "action": {
+          "id": "play:22:siege",
+          "instance_id": 22,
+          "kind": "play",
+          "row": "siege"
+        }
+      },
+      "response_sha256": "0d80e14b12b2bb4c19a384ae04c4802afd8049078a2e2e7bae2edbe7ef64ac9d"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 14,
+        "action": {
+          "id": "play:12:ranged",
+          "instance_id": 12,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "06c7729ea2c620ecf456590ab90ea1855a7734a92432c43ebb3b6dab421a9de8"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 987338417
+      },
+      "response_sha256": "9d6e3cdbaad08b27e03e03c5a36eddf39dec3e16024cbdb6010b370a86f06363"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 15,
+        "action": {
+          "id": "play:26:siege",
+          "instance_id": 26,
+          "kind": "play",
+          "row": "siege"
+        }
+      },
+      "response_sha256": "9827bb370b1cfe4d6f89ccd56277e1fb7805d3eb336b0b63205803f0ed85743b"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 16,
+        "action": {
+          "id": "play:7",
+          "instance_id": 7,
+          "kind": "play"
+        }
+      },
+      "response_sha256": "bd5228cf6e93f1e69a66a65ea3aa943ea7325cf1ede28fe686f3c1b74984fe81"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 765083398
+      },
+      "response_sha256": "2d72d4ceb9595e3c32837a6d06d7e48051b0898114584c01bdf39431502e7036"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 17,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "f293c688f4025c538f69713c42c6416ad3d4efb6478c262306dccf44f679e07b"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 18,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "13e4a8152d4a541129e81ad9e30ce268bf513dc99d1fef6a35912337ca74d44d"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 19,
+        "action": {
+          "id": "play:9:melee",
+          "instance_id": 9,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "765544aeaf5c226c129b0c6a0e12cf308cee461b4fac6f1c88da368837692876"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 20,
+        "action": {
+          "id": "choice:6",
+          "instance_id": 6,
+          "kind": "choice"
+        }
+      },
+      "response_sha256": "6d1d761fb4df59f70c57f0d5760264ce35cb20471b20da4d1b8953c535e3bcfa"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 3170674119
+      },
+      "response_sha256": "f01bb0dc2cc7da095b10d9d08ee957bf6dabd578e3366483c7bad50da03a5e00"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 21,
+        "action": {
+          "id": "play:27:melee",
+          "instance_id": 27,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "ec01347abdd1da73055f6a283e76b95d44badd43ca87b0cb0650f051cb3f314f"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 22,
+        "action": {
+          "id": "play:4:ranged",
+          "instance_id": 4,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "602f343a0ab339e30d374d1643c5c93f0130888a70674b88ffa08182a57cae81"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 3011996477
+      },
+      "response_sha256": "8e33ffea9e03094c279bd4d3fd4d3716c6541be62f712c3132e08473395f57a8"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 23,
+        "action": {
+          "id": "play:21",
+          "instance_id": 21,
+          "kind": "play"
+        }
+      },
+      "response_sha256": "e102d9343f8ac3ac2f13cb31f9363ed275462f8c4db0b2b54e037c3e9eac65d6"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 24,
+        "action": {
+          "id": "play:23:ranged",
+          "instance_id": 23,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "63ada4ccd492390058b01d192f8605b8046b79927261d8a2c9fb4efcbc67d537"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 25,
+        "action": {
+          "id": "choice:25",
+          "instance_id": 25,
+          "kind": "choice"
+        }
+      },
+      "response_sha256": "1ecceed494e813f8e65587a145805cce1f1a91f3257cfaa6ca8fb8af75b9acc7"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 5817997
+      },
+      "response_sha256": "58cf254a0d48af94a8ffc2fd0243f9fe7e6edc5109b547fbb9f66da31017cac9"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 26,
+        "action": {
+          "id": "play:15:ranged",
+          "instance_id": 15,
+          "kind": "play",
+          "row": "ranged"
+        }
+      },
+      "response_sha256": "dffc1916851211b1c56dc5d17b0d7cfb41851bd737cbc8f4501461528f618b76"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 27,
+        "action": {
+          "id": "play:8:melee",
+          "instance_id": 8,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "07e2beb07efd41cd4ebb920c9be0f57dabacb97d9578d1b52567c33c42b6cb2d"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "stock_act",
+        "match_id": "m1",
+        "seat": 1,
+        "rng_seed": 1561647406
+      },
+      "response_sha256": "b70f0106106383126e28d01469b169abf2c78a9ed99c3a33afc6826d1a306983"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 1,
+        "decision_id": 28,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "f3db9342d3d2f173f2fb6c0af55cce062238ab8d3c2fe93b77df19e06fed8ecb"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 29,
+        "action": {
+          "id": "play:29:melee",
+          "instance_id": 29,
+          "kind": "play",
+          "row": "melee"
+        }
+      },
+      "response_sha256": "c3064232542c3bfc1ab815140e69146d52248310f93be628a641e8c4aa24727c"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 30,
+        "action": {
+          "id": "play:30",
+          "instance_id": 30,
+          "kind": "play"
+        }
+      },
+      "response_sha256": "2ccb7b8e73ebd71d4962e92f02a4b23a24181bcad8fd9accd05e98555f976a83"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 31,
+        "action": {
+          "id": "play:31:siege",
+          "instance_id": 31,
+          "kind": "play",
+          "row": "siege"
+        }
+      },
+      "response_sha256": "f65f3ceb62eaf4e12801f5e17b3036315c156f30ff7508fa58383a30933461b0"
+    },
+    {
+      "request": {
+        "schema_version": 1,
+        "op": "step",
+        "match_id": "m1",
+        "seat": 0,
+        "decision_id": 32,
+        "action": {
+          "id": "pass",
+          "kind": "pass"
+        }
+      },
+      "response_sha256": "bad62eece63edd0229ff30a1793bcc94883a45596755749e630d31047df7e228"
+    }
+  ],
+  "notes": [
+    {
+      "decision_id": 0,
+      "seat": 0,
+      "note": "Exchanged Frost; it can weaken my melee spies as well as the opponent, while the hand already has draw spies, heroes, and Scorch.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 1,
+      "seat": 0,
+      "note": "I kept the remaining 10-power unit, draw spies, Medic, Horn, and Scorch; further exchange risks losing useful tools.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 2,
+      "seat": 0,
+      "note": "Played Shilard early to draw up to two cards; current hand confirms its draw effect and the opponent has no board points to protect.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 4,
+      "seat": 0,
+      "note": "Played Nausicaa2 while its matching copy is in hand, so Tight Bond can bring the linked units together and multiply their row strength.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 6,
+      "seat": 0,
+      "note": "The visible board is 3 to 10; Letho adds 10 hero points that resist weather and Scorch, reaching a narrow lead without offering another spy.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 8,
+      "seat": 0,
+      "note": "Impera Brigade adds 3 to the visible 13\u201316 score, creating a tie; Nilfgaard has the stated tie advantage, so this may secure the round cheaply if the opponent passes.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 10,
+      "seat": 0,
+      "note": "The visible gap is six points; Black Archer adds 10 now and leaves Menno available as a Medic if a unit reaches my graveyard.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 12,
+      "seat": 0,
+      "note": "Nausicaa3 shares Tight Bond with the Nausicaa2 already in my melee row; together they should add more than the card\u2019s base two points.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 14,
+      "seat": 0,
+      "note": "The visible deficit is five; Black Archer adds 10 points while preserving Menno\u2019s Medic for a later graveyard target.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 16,
+      "seat": 0,
+      "note": "Global Scorch can remove both visible Catapults at 16, tied as the strongest eligible non-hero units; my highest visible units are 10.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 18,
+      "seat": 0,
+      "note": "The opponent has passed at 29 while I have 42; passing now secures the round and keeps my four cards.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 19,
+      "seat": 0,
+      "note": "Menno is 10 hero strength and my graveyard now holds eligible non-hero units; its Medic can add another unit this turn.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 20,
+      "seat": 0,
+      "note": "The offered Medic targets include both 10-power Black Archers in my graveyard; I chose one for the highest visible revived strength.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 22,
+      "seat": 0,
+      "note": "My score leads 20 to 10 and the ranged row has one 10-power unit; Horn raises that row by another 10.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 24,
+      "seat": 0,
+      "note": "Fog has reduced my ranged unit despite Horn; I used the remaining Medic to add a graveyard unit in a different row and recover points.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 25,
+      "seat": 0,
+      "note": "The offered melee Impera Brigade is worth 3 in clear weather, more than the 2-point Nausicaa choices; I chose it for the Medic.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 27,
+      "seat": 0,
+      "note": "The visible score is 17 to 20; I used Stefan\u2019s draw effect to seek more cards for a comeback, despite giving the opponent 9 points.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 29,
+      "seat": 0,
+      "note": "The opponent passed at 29; Mysterious Elf has zero base power and draws up to two cards, which may give me enough to continue.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 30,
+      "seat": 0,
+      "note": "Global Scorch can remove my visible 9-power Stefan from the opponent\u2019s board, their only highest eligible non-hero unit; the leaders are heroes.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 31,
+      "seat": 0,
+      "note": "After Scorch the scores are 17 to 20; Heavy Zerri adds 10 siege points in clear weather and should put me ahead.",
+      "status": "unvalidated_hypothesis"
+    },
+    {
+      "decision_id": 32,
+      "seat": 0,
+      "note": "The opponent passed and I lead 27 to 20; passing settles the round with my lead.",
+      "status": "unvalidated_hypothesis"
+    }
+  ],
+  "terminal": {
+    "rounds": [
+      {
+        "round": 1,
+        "scores": [
+          42,
+          29
+        ],
+        "winner": 0
+      },
+      {
+        "round": 2,
+        "scores": [
+          27,
+          20
+        ],
+        "winner": 0
+      }
+    ],
+    "winner": 0
+  },
+  "reports": [
+    {
+      "schema": "w3gwent.llm_report.v1",
+      "validation": "unvalidated",
+      "session_id": "1924302dc63f1363aac171c0703c9d2d",
+      "decision_id": 4,
+      "label": "own-mistake",
+      "report": "At decision 4 I played Nausicaa2 for 2 base points while its matching copy remained in hand, so the visible melee row got no Tight Bond bonus. Letho was a legal alternative and would have raised the visible 1\u20137 score to 11\u20137 with 10 hero points. That might have reduced later card spending, though later opponent plays and the final result are uncertain. Replay the same seed with Letho at decision 4 and compare cards spent in round 1 and the round result."
+    }
+  ],
+  "verification": {
+    "portable_action_replay": "passed",
+    "actions": 33,
+    "reports": "unvalidated",
+    "tool_access_audit": "not_performed"
+  }
+}

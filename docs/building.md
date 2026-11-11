@@ -3,6 +3,10 @@
 For normal installation, use the prebuilt player download.
 This page describes development builds from the source checkout.
 
+For headless LLM or session-agent games against configured opponents, see the
+[LLM player connector](llm-connector.md). It uses a separately built rules engine
+and private inputs; it does not change the installed mod.
+
 ## Inputs
 
 | Input | Requirement |

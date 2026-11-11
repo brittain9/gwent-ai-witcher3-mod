@@ -1,0 +1,624 @@
+{
+  "schema": "w3gwent-collection-index-v1",
+  "model": "gpt-6.1-terra",
+  "planned_primary_games": 18,
+  "started_games": 17,
+  "completed_games": 16,
+  "incomplete_games": 1,
+  "closure": "User requested finishing existing games only; one primary slot and reserve retry not run.",
+  "prompt_version": "player-v3+mechanics-v2+review-v2",
+  "prompt_sha256": {
+    "docs/llm-play/player-v3.md": "44e5582e63307056f6a42bdce71d49576f13568fe564ebef1d30132dff4f6315",
+    "docs/llm-play/mechanics-v2.md": "9113646d99d91911e778136adf226fa0e9d7ca5516d11712bac136ac9cef63a3",
+    "docs/llm-play/review-v2.md": "ded93ec37d5dff3eae0e0da00056b4506cbbd8dc37b7036247db8bbfdfa1053a"
+  },
+  "interventions": [
+    {
+      "game": "medium-scoia-skellige-tree",
+      "issue": "capability starting with dash rejected by argparse before first state",
+      "resolution": "session wrapper uses attached argument values; future generated capabilities have fixed alphabetic prefix",
+      "commands_rejected": 2,
+      "game_moves_before_fix": 0,
+      "gameplay_rules_changed": false
+    },
+    {
+      "game": "xhigh-monster-north-stock",
+      "issue": "terminal response truncated by outer tool output limit",
+      "recovery": "player refreshed state at larger capture budget",
+      "change": "remaining agents receive inner24000/outer30000 token capture budgets; minimum in frozen prompt remains16000",
+      "gameplay_rules_changed": false
+    },
+    {
+      "game": "medium-skellige-scoia-search",
+      "at": "2026-11-11T02:09:46.155137+00:00",
+      "issue": "several minutes without advancing decision6",
+      "action": "interrupted and resumed same player agent turn; same game and rules; required state refresh",
+      "new_game_launched": false
+    }
+  ],
+  "interpretation": "exploratory; no automated transcript audit or optimal-action admission",
+  "games": [
+    {
+      "id": "medium-north-nilf-stock",
+      "scenario": "north-nilf-stock",
+      "reasoning_effort": "medium",
+      "seat": 0,
+      "collections": [
+        "NKHard",
+        "NilfHard"
+      ],
+      "variants": [
+        2,
+        1
+      ],
+      "seed": 941700,
+      "status": "completed",
+      "result": "win",
+      "record": "medium-north-nilf-stock.json",
+      "record_sha256": "e63d94ca9dae9ae0da366c05eb769ea061d7e2bd21333a73566c85ee6180e09f",
+      "completed": true,
+      "accepted_player_moves": 16,
+      "rejected_player_commands": 0,
+      "engine_actions": 31,
+      "wall_seconds": 567.84,
+      "stop_seconds": null,
+      "reports": 2,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "high-north-nilf-stock",
+      "scenario": "north-nilf-stock",
+      "reasoning_effort": "high",
+      "seat": 0,
+      "collections": [
+        "NKHard",
+        "NilfHard"
+      ],
+      "variants": [
+        2,
+        1
+      ],
+      "seed": 941700,
+      "status": "completed",
+      "result": "loss",
+      "record": "high-north-nilf-stock.json",
+      "record_sha256": "5142fc2170b463f8ad942875d488fc59d44df111a339505197ff4796d73b0d9f",
+      "completed": true,
+      "accepted_player_moves": 15,
+      "rejected_player_commands": 0,
+      "engine_actions": 31,
+      "wall_seconds": 544.66,
+      "stop_seconds": null,
+      "reports": 2,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "xhigh-north-nilf-stock",
+      "scenario": "north-nilf-stock",
+      "reasoning_effort": "xhigh",
+      "seat": 0,
+      "collections": [
+        "NKHard",
+        "NilfHard"
+      ],
+      "variants": [
+        2,
+        1
+      ],
+      "seed": 941700,
+      "status": "completed",
+      "result": "win",
+      "record": "xhigh-north-nilf-stock.json",
+      "record_sha256": "dc41ab35b0d5df13e0b105efc25712af7b59e59eefdd28cc13c986aad5a8909e",
+      "completed": true,
+      "accepted_player_moves": 15,
+      "rejected_player_commands": 0,
+      "engine_actions": 27,
+      "wall_seconds": 273.86,
+      "stop_seconds": null,
+      "reports": 2,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "medium-nilf-monster-network",
+      "scenario": "nilf-monster-network",
+      "reasoning_effort": "medium",
+      "seat": 1,
+      "collections": [
+        "NMLHard",
+        "NilfTournament2"
+      ],
+      "variants": [
+        1,
+        1
+      ],
+      "seed": 941701,
+      "status": "closed_incomplete",
+      "result": "incomplete",
+      "record": "medium-nilf-monster-network.json",
+      "record_sha256": "2d4be52ef3516a9ab3d95824e3bfd7dfc9885fb7f0666f09008958af7f6f4e23",
+      "completed": false,
+      "accepted_player_moves": 7,
+      "rejected_player_commands": null,
+      "engine_actions": 11,
+      "wall_seconds": null,
+      "stop_seconds": 900.1,
+      "reports": 0,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "high-nilf-monster-network",
+      "scenario": "nilf-monster-network",
+      "reasoning_effort": "high",
+      "seat": 1,
+      "collections": [
+        "NMLHard",
+        "NilfTournament2"
+      ],
+      "variants": [
+        1,
+        1
+      ],
+      "seed": 941701,
+      "status": "completed",
+      "result": "win",
+      "record": "high-nilf-monster-network.json",
+      "record_sha256": "d9fa6ca3576e6ca38592964b560731020e39d6a650773437acb8cfe0c6b632fd",
+      "completed": true,
+      "accepted_player_moves": 19,
+      "rejected_player_commands": 0,
+      "engine_actions": 31,
+      "wall_seconds": 291.68,
+      "stop_seconds": null,
+      "reports": 1,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "xhigh-nilf-monster-network",
+      "scenario": "nilf-monster-network",
+      "reasoning_effort": "xhigh",
+      "seat": 1,
+      "collections": [
+        "NMLHard",
+        "NilfTournament2"
+      ],
+      "variants": [
+        1,
+        1
+      ],
+      "seed": 941701,
+      "status": "completed",
+      "result": "win",
+      "record": "xhigh-nilf-monster-network.json",
+      "record_sha256": "cb427ec32d04a54a896520715c00b94aa1a2e6abd7c81b2ab1158a04cf13eb7b",
+      "completed": true,
+      "accepted_player_moves": 20,
+      "rejected_player_commands": 0,
+      "engine_actions": 32,
+      "wall_seconds": 316.18,
+      "stop_seconds": null,
+      "reports": 2,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "medium-scoia-skellige-tree",
+      "scenario": "scoia-skellige-tree",
+      "reasoning_effort": "medium",
+      "seat": 0,
+      "collections": [
+        "ScoiaTournament2",
+        "SkelHard"
+      ],
+      "variants": [
+        1,
+        1
+      ],
+      "seed": 941702,
+      "status": "completed",
+      "result": "loss",
+      "record": "medium-scoia-skellige-tree.json",
+      "record_sha256": "4841a87cf897fa7c486ff648df5718c2bb0420b674aaafbc009d329c6521c878",
+      "completed": true,
+      "accepted_player_moves": 17,
+      "rejected_player_commands": 2,
+      "engine_actions": 31,
+      "wall_seconds": 699.62,
+      "stop_seconds": null,
+      "reports": 2,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "high-scoia-skellige-tree",
+      "scenario": "scoia-skellige-tree",
+      "reasoning_effort": "high",
+      "seat": 0,
+      "collections": [
+        "ScoiaTournament2",
+        "SkelHard"
+      ],
+      "variants": [
+        1,
+        1
+      ],
+      "seed": 941702,
+      "status": "completed",
+      "result": "loss",
+      "record": "high-scoia-skellige-tree.json",
+      "record_sha256": "c9083518e7de01dd4d585540d9271eea8b64e75533c587e307b23bb867f14db4",
+      "completed": true,
+      "accepted_player_moves": 17,
+      "rejected_player_commands": 0,
+      "engine_actions": 31,
+      "wall_seconds": 609.82,
+      "stop_seconds": null,
+      "reports": 1,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "xhigh-scoia-skellige-tree",
+      "scenario": "scoia-skellige-tree",
+      "reasoning_effort": "xhigh",
+      "seat": 0,
+      "collections": [
+        "ScoiaTournament2",
+        "SkelHard"
+      ],
+      "variants": [
+        1,
+        1
+      ],
+      "seed": 941702,
+      "status": "completed",
+      "result": "loss",
+      "record": "xhigh-scoia-skellige-tree.json",
+      "record_sha256": "f033dabda92e91ad9e7fa0c82eb4e18f5c26bd07460e44be7399f5dd54529fca",
+      "completed": true,
+      "accepted_player_moves": 11,
+      "rejected_player_commands": 0,
+      "engine_actions": 24,
+      "wall_seconds": 578.95,
+      "stop_seconds": null,
+      "reports": 2,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "medium-monster-north-stock",
+      "scenario": "monster-north-stock",
+      "reasoning_effort": "medium",
+      "seat": 1,
+      "collections": [
+        "NKHard",
+        "NMLHard"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "seed": 941703,
+      "status": "completed",
+      "result": "win",
+      "record": "medium-monster-north-stock.json",
+      "record_sha256": "b15463b7f10f630dd74c093f7edcf646f63d3c94c40e97a97cc8cc193f22ec83",
+      "completed": true,
+      "accepted_player_moves": 20,
+      "rejected_player_commands": 0,
+      "engine_actions": 36,
+      "wall_seconds": 302.52,
+      "stop_seconds": null,
+      "reports": 1,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "2d07caf5b3448fd15bd63b1f2b691ce7b72d8f75307fabcb881a575b493a6765"
+      }
+    },
+    {
+      "id": "high-monster-north-stock",
+      "scenario": "monster-north-stock",
+      "reasoning_effort": "high",
+      "seat": 1,
+      "collections": [
+        "NKHard",
+        "NMLHard"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "seed": 941703,
+      "status": "completed",
+      "result": "win",
+      "record": "high-monster-north-stock.json",
+      "record_sha256": "e9f7fde31bb1e795c8d22bc688461f2287698bcab4576b16a4698700fc03d39d",
+      "completed": true,
+      "accepted_player_moves": 21,
+      "rejected_player_commands": 0,
+      "engine_actions": 42,
+      "wall_seconds": 327.52,
+      "stop_seconds": null,
+      "reports": 2,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "xhigh-monster-north-stock",
+      "scenario": "monster-north-stock",
+      "reasoning_effort": "xhigh",
+      "seat": 1,
+      "collections": [
+        "NKHard",
+        "NMLHard"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "seed": 941703,
+      "status": "completed",
+      "result": "loss",
+      "record": "xhigh-monster-north-stock.json",
+      "record_sha256": "601ac4427b2364128bc0fd563aee787e7d971ca9a65e4554d9ec7fdda11be37b",
+      "completed": true,
+      "accepted_player_moves": 21,
+      "rejected_player_commands": 0,
+      "engine_actions": 40,
+      "wall_seconds": 349.19,
+      "stop_seconds": null,
+      "reports": 2,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "fd07a32c72a24146ed14489f8844b0f3cb5103c1ef68a3768bcf5393bc5bdcdb"
+      }
+    },
+    {
+      "id": "medium-skellige-scoia-search",
+      "scenario": "skellige-scoia-search",
+      "reasoning_effort": "medium",
+      "seat": 0,
+      "collections": [
+        "SkelHard",
+        "ScoiaHard"
+      ],
+      "variants": [
+        2,
+        2
+      ],
+      "seed": 941704,
+      "status": "completed",
+      "result": "loss",
+      "record": "medium-skellige-scoia-search.json",
+      "record_sha256": "084ef22f0ba226f8ba7d3b4dc8eae223ab647c17d4d639e2dfa75675381d5100",
+      "completed": true,
+      "accepted_player_moves": 15,
+      "rejected_player_commands": 0,
+      "engine_actions": 30,
+      "wall_seconds": 773.45,
+      "stop_seconds": null,
+      "reports": 1,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "2d07caf5b3448fd15bd63b1f2b691ce7b72d8f75307fabcb881a575b493a6765"
+      }
+    },
+    {
+      "id": "high-skellige-scoia-search",
+      "scenario": "skellige-scoia-search",
+      "reasoning_effort": "high",
+      "seat": 0,
+      "collections": [
+        "SkelHard",
+        "ScoiaHard"
+      ],
+      "variants": [
+        2,
+        2
+      ],
+      "seed": 941704,
+      "status": "completed",
+      "result": "win",
+      "record": "high-skellige-scoia-search.json",
+      "record_sha256": "a7a51dedf5269a53d7d5c136f105ffa9ef0b4b92f25fa61f4c485b01a2704eac",
+      "completed": true,
+      "accepted_player_moves": 14,
+      "rejected_player_commands": 0,
+      "engine_actions": 29,
+      "wall_seconds": 240.62,
+      "stop_seconds": null,
+      "reports": 1,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "2d07caf5b3448fd15bd63b1f2b691ce7b72d8f75307fabcb881a575b493a6765"
+      }
+    },
+    {
+      "id": "xhigh-skellige-scoia-search",
+      "scenario": "skellige-scoia-search",
+      "reasoning_effort": "xhigh",
+      "seat": 0,
+      "collections": [
+        "SkelHard",
+        "ScoiaHard"
+      ],
+      "variants": [
+        2,
+        2
+      ],
+      "seed": 941704,
+      "status": "completed",
+      "result": "loss",
+      "record": "xhigh-skellige-scoia-search.json",
+      "record_sha256": "b626b8b1660aac7e612ada65600e44f6cf34e04862e2ed0b3ce7bdd48d348263",
+      "completed": true,
+      "accepted_player_moves": 14,
+      "rejected_player_commands": 0,
+      "engine_actions": 31,
+      "wall_seconds": 258.98,
+      "stop_seconds": null,
+      "reports": 1,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "2d07caf5b3448fd15bd63b1f2b691ce7b72d8f75307fabcb881a575b493a6765"
+      }
+    },
+    {
+      "id": "medium-nilf-skellige-tree",
+      "scenario": "nilf-skellige-tree",
+      "reasoning_effort": "medium",
+      "seat": 1,
+      "collections": [
+        "SkelTournament2",
+        "NilfTournament2"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "seed": 941705,
+      "status": "completed",
+      "result": "loss",
+      "record": "medium-nilf-skellige-tree.json",
+      "record_sha256": "1c5e0c24545a546e43131fb0b560cbaf3727de2f1f267c2f983b03e7b1cddd4b",
+      "completed": true,
+      "accepted_player_moves": 18,
+      "rejected_player_commands": 0,
+      "engine_actions": 33,
+      "wall_seconds": 633.76,
+      "stop_seconds": null,
+      "reports": 2,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "2d07caf5b3448fd15bd63b1f2b691ce7b72d8f75307fabcb881a575b493a6765"
+      }
+    },
+    {
+      "id": "high-nilf-skellige-tree",
+      "scenario": "nilf-skellige-tree",
+      "reasoning_effort": "high",
+      "seat": 1,
+      "collections": [
+        "SkelTournament2",
+        "NilfTournament2"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "seed": 941705,
+      "status": "not_run_user_closed_batch"
+    },
+    {
+      "id": "xhigh-nilf-skellige-tree",
+      "scenario": "nilf-skellige-tree",
+      "reasoning_effort": "xhigh",
+      "seat": 1,
+      "collections": [
+        "SkelTournament2",
+        "NilfTournament2"
+      ],
+      "variants": [
+        1,
+        2
+      ],
+      "seed": 941705,
+      "status": "completed",
+      "result": "loss",
+      "record": "xhigh-nilf-skellige-tree.json",
+      "record_sha256": "13311c97b5e9a11158f59a5401925ff4fb8bf255ea0e9804c2070d167300961e",
+      "completed": true,
+      "accepted_player_moves": 9,
+      "rejected_player_commands": 0,
+      "engine_actions": 21,
+      "wall_seconds": 185.85,
+      "stop_seconds": null,
+      "reports": 1,
+      "source_sha256": {
+        "w3gwent/llm_host.py": "f55d08ea56a4e9943500f8d11e756f2f779841e3d7499bd22c351a2aee48091f",
+        "scripts/llm_play.py": "2d07caf5b3448fd15bd63b1f2b691ce7b72d8f75307fabcb881a575b493a6765"
+      }
+    },
+    {
+      "id": "medium-nilf-monster-network-retry1",
+      "scenario": "nilf-monster-network",
+      "reasoning_effort": "medium",
+      "seat": 1,
+      "collections": [
+        "NMLHard",
+        "NilfTournament2"
+      ],
+      "variants": [
+        1,
+        1
+      ],
+      "seed": 941701,
+      "status": "not_run_user_closed_batch"
+    }
+  ],
+  "by_effort": {
+    "medium": {
+      "completed": 5,
+      "wins": 2,
+      "losses": 3,
+      "draws": 0,
+      "incomplete": 1,
+      "mean_minutes_completed": 9.92,
+      "accepted_player_moves": 93
+    },
+    "high": {
+      "completed": 5,
+      "wins": 3,
+      "losses": 2,
+      "draws": 0,
+      "incomplete": 0,
+      "mean_minutes_completed": 6.71,
+      "accepted_player_moves": 86
+    },
+    "xhigh": {
+      "completed": 6,
+      "wins": 2,
+      "losses": 4,
+      "draws": 0,
+      "incomplete": 0,
+      "mean_minutes_completed": 5.45,
+      "accepted_player_moves": 90
+    }
+  },
+  "common_completed_scenarios": [
+    "monster-north-stock",
+    "north-nilf-stock",
+    "scoia-skellige-tree",
+    "skellige-scoia-search"
+  ],
+  "common_scenario_wins": {
+    "medium": 2,
+    "high": 2,
+    "xhigh": 1
+  }
+}
