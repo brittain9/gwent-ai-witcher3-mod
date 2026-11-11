@@ -210,4 +210,7 @@ The separate rules-engine test correction is committed in
 `witcher3-gwent-ai-research` as `df4e68b` on
 `codex/scoia-history-testfix`. It changes the stale fixture only. The connector,
 versioned contexts, reports and curated records are retained in this mod repo.
-These are local commits; remote synchronization has not been performed.
+Alex subsequently set commit-and-push as the default for completed repository
+work. Keep the source, decisions and curated records committed and pushed at
+each handoff. The mod work is on `codex/llm-games-and-handoff`; the engine
+fixture correction is on `codex/scoia-history-testfix`.
