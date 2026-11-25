@@ -72,6 +72,8 @@ def _method_once(source: str, method: str, anchor: str, addition: str) -> str:
 def _helpers(helpers: dict[str, str]) -> None:
     expected = {
         "GwaiCapture",
+        "GwaiTerminalCatalog",
+        "GwaiTerminalTactics",
         "GwaiNetPolicy",
         "GwaiNetWeights",
         "GwaiSharedController",
@@ -131,6 +133,16 @@ def patch_sources(originals: dict[str, str], helpers: dict[str, str]) -> dict[st
     ):
         start, _ = _body(ai, method)
         ai = ai[:start] + "\n         " + statement + ai[start:]
+    # Recheck a proved pass before the native pass state mutates play.
+    for method in ("state_begin_Idle",):
+        start, _ = _body(ai, method)
+        ai = (
+            ai[:start] + "\n         if(!this.gwaiTerminalProofCommit())\n"
+            "         {\n            this._decidedCardTransaction = null;\n"
+            "            this.attitude = TACTIC_NONE;\n"
+            '            this._stateMachine.ChangeState("ChoosingMove");\n'
+            "            return;\n         }" + ai[start:]
+        )
     ai = _once(
         ai,
         "protected var _currentRoundCritical:Boolean = false;",

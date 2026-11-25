@@ -12,7 +12,7 @@ def patch_terminal_host(sources, *, search=False):
     result = dict(sources)
     try:
         ai = result["AIPlayerController"]
-        if "gwaiTerminal" in ai:
+        if "var gwaiTerminal:Boolean =" in ai:
             raise TerminalCompositionError("terminal host is already patched")
         authority = "GwaiSharedConfig.terminalPassEnabled() && GwaiSharedController.terminalPass(this._gwaiView.observation,this._gwaiMoves) != null"
         if search:
@@ -27,6 +27,10 @@ def patch_terminal_host(sources, *, search=False):
             anchor = "this._gwaiRunner = new GwaiSharedController(profile,this.gameFlowControllerRef.gwaiOwnedActionUniforms(profile,this.playerID,this.gameFlowControllerRef.gwaiPrimaryTicket(this.playerID)));"
             replacement = (
                 "var gwaiTerminal:Boolean = " + authority + ";\n"
+                "            if(!gwaiTerminal && proofCatalog != null)\n"
+                "            {\n               try\n               {\n"
+                "                  gwaiTerminal = GwaiTerminalTactics.certify(this._gwaiView.observation,this._gwaiMoves,proofCatalog,String(GwaiSharedConfig.data().OBSERVATION_PROFILE_ID),this.gwaiTerminalProofContext()) != null;\n"
+                "               }\n               catch(gwaiProofError:Error) {}\n            }\n"
                 "            this._gwaiRunner = new GwaiSharedController(profile,gwaiTerminal ? null : this.gameFlowControllerRef.gwaiOwnedActionUniforms(profile,this.playerID,this.gameFlowControllerRef.gwaiPrimaryTicket(this.playerID)),gwaiTerminal);"
             )
             ai = _once(
@@ -94,7 +98,7 @@ def patch_terminal_host(sources, *, search=False):
         if body.count(anchor) != 1:
             raise TerminalCompositionError("original decision classifier differs")
         classifier = (
-            'var controllerKind:String = controllerSource == "terminal-pass-guard" ? "rule" : '
+            'var controllerKind:String = (controllerSource == "terminal-pass-guard" || controllerSource == "nilfgaard-terminal-pass" || controllerSource == "positive-unit-closure") ? "rule" : '
             '(controllerSource == "fair-search-v1" ? "search" : (controllerSource == "network" ? "network" : "vanilla"));\n'
             '         this.gwaiRecordDecision(fallback ? "vanilla" : controllerKind,detail);'
         )
@@ -102,7 +106,7 @@ def patch_terminal_host(sources, *, search=False):
         # Keep existing signal preferences. Detail contains the truthful source kind.
         body = body.replace(
             'if(detail.indexOf("shared-policy ") >= 0 && this.mcMessageQueue != null)',
-            'if((controllerSource == "network" || controllerSource == "terminal-pass-guard" || controllerSource == "fair-search-v1") && this.mcMessageQueue != null)',
+            'if((controllerSource == "network" || controllerSource == "terminal-pass-guard" || controllerSource == "nilfgaard-terminal-pass" || controllerSource == "positive-unit-closure" || controllerSource == "fair-search-v1") && this.mcMessageQueue != null)',
         )
         flow = flow[:start] + body + flow[end:]
         result["GwintGameFlowController"] = flow
@@ -142,7 +146,7 @@ def patch_settings_asset(source):
     text = text.replace(
         anchor,
         anchor
-        + '\n    if (search > 0) { status = "Search choices recorded"; }\n    if (rule > 0 && network == 0 && search == 0 && vanilla == 0 && greedy == 0) { status = "Proven match-winning pass recorded"; }\n    if ((search > 0 || rule > 0) && (vanilla > 0 || greedy > 0)) { status = "Shared controller used, with fallbacks"; }',
+        + '\n    if (search > 0) { status = "Search choices recorded"; }\n    if (rule > 0 && network == 0 && search == 0 && vanilla == 0 && greedy == 0) { status = "Proven match-winning move recorded"; }\n    if ((search > 0 || rule > 0) && (vanilla > 0 || greedy > 0)) { status = "Shared controller used, with fallbacks"; }',
         1,
     )
     anchor = '    text += separator + "Network choices: " + IntToString(network) + "; selected stock: " + IntToString(stock);'
@@ -151,7 +155,7 @@ def patch_settings_asset(source):
     text = text.replace(
         anchor,
         anchor
-        + '\n    text += separator + "Search choices: " + IntToString(search) + "; Proven match-winning passes: " + IntToString(rule);',
+        + '\n    text += separator + "Search choices: " + IntToString(search) + "; Proven match-winning moves: " + IntToString(rule);',
         1,
     )
     anchor = (

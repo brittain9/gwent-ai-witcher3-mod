@@ -8,6 +8,10 @@ AI_MEMBERS = r"""      // FFDec resolves native slot types before appended inter
       private var _gwaiMoves:Array = null;
       private var _gwaiProfile:int = -1;
       private var _gwaiStartedAt:int = -1;
+      private var _gwaiCapturedTicket:Number = -1;
+      private var _gwaiProofMove:String = null;
+      private var _gwaiProofTicket:Number = -1;
+      private var _gwaiProofDecision:int = -1;
 
       public function gwaiCancel() : void
       {
@@ -18,6 +22,10 @@ AI_MEMBERS = r"""      // FFDec resolves native slot types before appended inter
          this._gwaiProfile = -1;
          this._gwaiStartedAt = -1;
          this._gwaiCapturedDecisionId = -1;
+         this._gwaiCapturedTicket = -1;
+         this._gwaiProofMove = null;
+         this._gwaiProofTicket = -1;
+         this._gwaiProofDecision = -1;
       }
 
       public function gwaiBegin() : Boolean
@@ -56,7 +64,15 @@ AI_MEMBERS = r"""      // FFDec resolves native slot types before appended inter
             this._gwaiProfile = profile;
             stage = "runner setup";
             this._gwaiCapturedDecisionId = this.gameFlowControllerRef.gwaiPolicyDecisionId();
+            this._gwaiCapturedTicket = this.gameFlowControllerRef.gwaiPrimaryTicket(this.playerID);
+            var proofCatalog:Object = null;
+            try
+            {
+               proofCatalog = GwaiTerminalCatalog.capture(manager,this._gwaiView.observation);
+            }
+            catch(proofSetupError:Error) {}
             this._gwaiRunner = new GwaiSharedController(profile);
+            if(proofCatalog != null) this._gwaiRunner.bindTerminalProof(proofCatalog,this.gwaiTerminalProofContext);
             this._gwaiRunner.begin(this._gwaiView.observation,this._gwaiMoves);
             this._decidedCardTransaction = null;
             this.attitude = TACTIC_NONE;
@@ -112,6 +128,13 @@ AI_MEMBERS = r"""      // FFDec resolves native slot types before appended inter
                }
             }
             if(move == null) throw new Error("shared controller selected an unknown canonical action");
+            if(this._gwaiRunner.sourceKind == "positive-unit-closure" || this._gwaiRunner.sourceKind == "nilfgaard-terminal-pass")
+            {
+               this._gwaiProofMove = String(move.id);
+               this._gwaiProofTicket = this._gwaiCapturedTicket;
+               this._gwaiProofDecision = this._gwaiCapturedDecisionId;
+               if(!this.gwaiTerminalProofStillValid()) throw new Error("terminal proof became stale");
+            }
             var startedAt:int = this._gwaiStartedAt;
             this._gwaiRunner = null;
             this._gwaiView = null;
@@ -172,6 +195,47 @@ AI_MEMBERS = r"""      // FFDec resolves native slot types before appended inter
             this.gwaiNativeFallback();
             return false;
          }
+      }
+
+      private function gwaiTerminalProofContext() : Object
+      {
+         return {ready:this.gameFlowControllerRef.gwaiPrimaryObservationReady(this.playerID),
+            effectApplying:this.cardEffectApplying(),ticket:this.gameFlowControllerRef.gwaiPrimaryTicket(this.playerID),
+            capturedTicket:this._gwaiCapturedTicket,actor:this.gameFlowControllerRef.currentPlayer,
+            counter:this.gameFlowControllerRef.gwaiPolicyDecisionId()};
+      }
+
+      // Re-prove the same canonical move at the native send/pass transition.
+      private function gwaiTerminalProofStillValid() : Boolean
+      {
+         if(this._gwaiProofMove == null) return true;
+         try
+         {
+            var flow:GwintGameFlowController = this.gameFlowControllerRef;
+            var ticket:Number = flow.gwaiPrimaryTicket(this.playerID);
+            if(!flow.gwaiPrimaryObservationReady(this.playerID) || this.cardEffectApplying() ||
+               ticket != this._gwaiProofTicket || flow.currentPlayer != this.playerID ||
+               flow.gwaiPolicyDecisionId() != this._gwaiProofDecision) return false;
+            var manager:CardManager = CardManager.getInstance();
+            var view:Object = GwaiCapture.capture(manager,flow,this.playerID).observation;
+            var legal:Array = GwaiCapture.legalMoves(manager,this.playerID);
+            var catalog:Object = GwaiTerminalCatalog.capture(manager,view);
+            var context:Object = {ready:true,effectApplying:false,ticket:ticket,capturedTicket:this._gwaiProofTicket,
+               actor:flow.currentPlayer,counter:flow.gwaiPolicyDecisionId()};
+            var proof:Object = GwaiTerminalTactics.certify(view,legal,catalog,String(GwaiSharedConfig.data().OBSERVATION_PROFILE_ID),context);
+            return proof != null && proof.action != null && proof.action.id === this._gwaiProofMove;
+         }
+         catch(error:Error) { return false; }
+      }
+
+      public function gwaiTerminalProofCommit() : Boolean
+      {
+         if(this._gwaiProofMove == null) return true;
+         var valid:Boolean = this.gwaiTerminalProofStillValid();
+         this._gwaiProofMove = null;
+         this._gwaiProofTicket = -1;
+         this._gwaiProofDecision = -1;
+         return valid;
       }
 
       private function gwaiReportDecision(profile:int, fallback:Boolean, detail:String) : void

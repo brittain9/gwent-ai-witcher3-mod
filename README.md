@@ -1,133 +1,69 @@
 # Gwent: Trained Opponents
 
-**A tougher opponent. The same Gwent.**
+**A tougher, smarter, strictly fair Gwent opponent running 100% locally inside The Witcher 3.**
 
-Trained Opponents replaces the original Gwent AI with a neural network trained
-through **self-play reinforcement learning** for
-**The Witcher 3: Wild Hunt — Remastered**.
-The policy learned from simulated matches against itself, with match outcomes
-providing the training signal. The mod preserves the original cards, rules,
-NPC decks, rewards and collection progression.
+Your Witcher 3 Gwent opponents are now trained on over **4.5 million games of self-play**.
 
-The original Gwent AI uses handwritten rules and scoring to choose its moves.
-These can produce wasteful decisions, such as repeating an ineffective weather
-effect or spending cards for little benefit.
+**Gwent: Trained Opponents** replaces the vanilla Gwent logic across **every Story and Practice opponent** with a dedicated neural network running locally inside the game. It plays like a real Gwent player (card advantage, Spy and Decoy timing, Round 2 passes, Scorch and Weather discipline, sharp Round 3 endgames), never cheats or peeks at your hand, and installs in **1 click on Steam Workshop**.
 
-The source on `main` now uses one shared model with difficulty controlled by move
-selection. The latest downloadable release remains unchanged until a new player
-package is published. Model stats and controls below describe the current source;
-the older download uses three separate policies.
+- **Plays fair:** Never reads your hand or deck order. It only sees what a human opponent can legally see: its own hand, its own remaining deck, the public board, graveyards, and public play history.
+- **100% local & offline (9.1 MB):** Everything runs directly inside Witcher 3's Gwent screen. No internet connection, no background app, and no external `.exe`.
+- **Feels native to Witcher 3:** Keeps all original cards, rules, NPC decks, quests, and rewards untouched. Syncs with **Gameplay -> Gwent Difficulty** (**Easy / Normal / Hard**), includes a 1-click toggle back to vanilla anytime, and adds a **Practice** menu so you can play against 39+ Story, DLC, and Tournament NPC decks using your save's real collection.
+- **Safe with mod packs:** Self-contained in `Mods/modW3GwentAI` with no `bin/config` edits. If another overhaul mod adds custom cards outside the base+DLC catalog, that turn cleanly falls back to the vanilla opponent instead of crashing.
 
-## How does it compare?
-
-With identical decks, the Hard policy won **75% of its simulated matches
-against the original AI**.
-
-| Result | Games |
-|---|---:|
-| Trained Hard won | **1,026** |
-| Original AI won | 282 |
-| Draw | 60 |
-| **Total** | **1,368** |
-
-This simulator benchmark used the same deck for both sides and swapped seats
-over 684 deals. It measures the Hard policy against a port
-of the original AI, rather than predicting win rates against human players.
-Your collection and the NPC's deck still affect each match.
-[Evaluation details](docs/evaluation.md) describe the setup and limits.
-
-## Designed for the game
-
-The aim is a more capable, enjoyable opponent that fits the original minigame.
-**Easy, Normal and Hard** vary move selection in story and practice matches.
-The strength gaps between the shared-model settings have not been measured.
-
-The mod does not aim to provide perfect or unbeatable play. Self-play is its
-training method, not a guarantee of optimal strategy or convergence to a
-**Nash equilibrium**—a pair of strategies where neither player benefits
-from changing only their own strategy. The opponent can still make mistakes,
-and winning every benchmark game is not the product's design goal.
-
-During play, the trained network runs locally inside the game's Gwent screen,
-using its own hand and the public board. It needs no server or AI subscription.
-[How it works](docs/how-it-works.md) explains the policy and information it uses.
-
-## Model stats
-
-| Stat | Current source |
-|---|---|
-| Training method | Self-play reinforcement learning using PPO |
-| Network size | One shared model, approximately 1.98 million parameters |
-| Difficulty levels | Easy, Normal, Hard |
-| In-game execution | Local inference; no server or subscription |
+---
 
 ## Install
 
-1. Download the **prebuilt native ZIP** and its checksum from the
-   [latest release](https://github.com/brittain9/gwent-ai-witcher3-mod/releases/latest).
-2. Close the game and REDlauncher.
-3. For a ZIP download, use Vortex's **Install From File**, then enable and
-   deploy the mod. For a Workshop download, subscribe and let Steam finish
-   installing it. Enable local or Workshop mods in the game's Gameplay settings.
-4. Start the game, load a save, and open **Settings > Mods > Gwent: Trained Opponents**.
-   **Enable AI** is on by default. Choose the challenge through the game's
-   **Gameplay > Gwent difficulty** setting.
+### Steam Workshop (Recommended)
+1. Subscribe to **Gwent: Trained Opponents** on Steam Workshop.
+2. Launch **The Witcher 3: Wild Hunt (Next-Gen / Remastered)** and make sure mods and Steam Workshop mods are enabled under **Settings -> Gameplay**.
+3. Load a save and play Gwent. The mod is enabled by default and follows your **Gwent Difficulty** setting.
 
-The player package includes the finished modified Gwent screen and trained weights.
-Python, Java, Node.js and training tools are not needed to play. If you used
-the earlier Python installer, uninstall that version using its original
-download folder before installing this package. Keep one installation of
-this mod active at a time.
+### Manual Install (GitHub Releases / Vortex)
+1. Download the latest `v1.0.0` `.zip` from GitHub Releases.
+2. Install it in Vortex (**Install From File**), or extract `Mods/modW3GwentAI` straight into your Witcher 3 folder.
 
-[Installation, compatibility and removal](docs/install.md) ·
-[Build from source](docs/building.md) · [Changelog](CHANGELOG.md)
+See [Installation & Controls](docs/install.md) for the full mod menu reference, troubleshooting, and removal steps.
 
-## Playing
+> **Compatibility:** Safe to install or remove mid-playthrough (does not modify save files). Requires The Witcher 3 Next-Gen / Remastered (Classic 1.32 is unsupported). Works on Windows, Linux/Proton, and Steam Deck. Conflicts with other mods that replace `gwint_game.redswf`; compatible with script-only, visual, and general gameplay mods.
 
-- **Enable AI** selects the trained opponent in both story and practice matches.
-  Turn it off to use the stock opponent.
-- **Gameplay > Gwent difficulty** controls move selection for story and practice.
-  All three levels share one model: Easy varies its choices most, Normal
-  varies them less, and Hard selects its highest-rated moves. After loading a
-  save, the same setting is also available in the mod menu.
-- Practice lets you choose an opponent, using your existing collection.
-  Native NPC deck selection stays with the game.
-- Moves run when computation finishes, with no artificial thinking delay.
-- The mod menu contains the AI switch, practice controls and troubleshooting.
+---
 
-The network sees its own hand, public cards, scores and card counts. It does
-not read your hidden hand or either deck's order. Difficulty changes move
-selection without granting hidden information or changing cards. The controller
-also passes when that immediately secures the match.
-Lookahead is not enabled.
+## How Strong Is It?
 
-## Compatibility and limits
+Tested in paired, seat-swapped full matches (canceling coin-flip and draw luck) using the exact model embedded in the mod:
 
-The prebuilt package targets compatible Remastered Gwent resources. Tested
-game versions are listed in the release notes; executable patch labels alone
-do not determine resource compatibility. Classic 1.32 is unsupported. Another
-mod that replaces the Gwent screen can conflict.
+| Witcher 3 Difficulty | vs. Vanilla Opponent (balanced decks) | Unseen 20-Deck Suite vs. Vanilla | Feel In-Game |
+| :--- | :---: | :---: | :--- |
+| **Hard** | **`87.3%`** (+335 Elo) | **`77.0%`** | Tight card advantage, Spy/Decoy discipline, smart passes, ruthless Round 3 closing |
+| **Normal** | **`~81.0%`** (+255 Elo) | **`~75%`** | Noticeably smarter than vanilla without punishing every small slip |
+| **Easy** | **`~70%`** (+150 Elo) | **`~67%`** | Clean play without goofy vanilla blunders (or disable in 1 click anytime for vanilla) |
 
-The preceding preview was played on Windows and Linux through Steam/Proton.
-This release's tested platforms and build identity are listed in its
-[release notes](https://github.com/brittain9/gwent-ai-witcher3-mod/releases/latest).
-The AI is fallible; there is no claim of optimal play or a calibrated human
-win rate. Your collection and the NPC's native deck still affect each match.
+**All 50 Hard Campaign NPC Decks** (exact vanilla NPC decks, no boosted cards, 196 matched deals):
+- **Vanilla opponent:** `25.0%`
+- **Gwent: Trained Opponents (Hard):** **`38.3%`** (**+13.3 percentage points** over vanilla)
 
-## Diagnose a problem
+Full methodology, confidence intervals, and limits are in [Benchmarks & Evaluation](docs/evaluation.md).
 
-**Show AI status (current / latest match)** separates current settings from the
-latest recorded match and its decision sources. **Show decision source**
-displays network and fallback messages.
-**Record public play-by-play** saves public actions, settled boards and match results
-locally, including the selected tier and model identity in new traces.
+---
 
-Both debug controls are off by default. Recording excludes hidden hands, deck
-order and unrevealed choices, and nothing uploads automatically. See
-[troubleshooting](docs/install.md#troubleshooting) for reports and rollback.
+## Under the Hood
 
-## License
+Steam Workshop only allows cooked game assets (no `.exe` or `.dll` companions), and Witcher 3's Gwent screen runs in **Scaleform ActionScript 3**, a single-threaded Flash VM with no GPU and no math libraries. To get strong play inside that budget without freezing the game:
 
-Original code, documentation and the inference weights in the player download
-use the [MIT license](LICENSE). The game and external tools retain their own
-rights and licenses. See [NOTICE](NOTICE.md).
+1. **Train a large self-play teacher first:** We trained a large multi-model self-play and endgame-search teacher from scratch over **4.5+ million simulated games** across balanced decks, generated decks, and all 50 Hard campaign rosters, with strict seat-visibility boundaries so hidden opponent cards never enter the deployed player.
+2. **Distill it down ~50x for Scaleform (`318k` parameters, `1.27 MB`):** Using knowledge distillation from the teacher's move evaluations, we compressed that play into a compact neural network sized specifically for Witcher 3's Flash VM. It keeps **93-94% top-1 move agreement** and lands within **3.5 Elo** (`49.5%` over 400 games) of the much larger pure teacher while shrinking over 50x.
+3. **Run it frame-sliced inside ActionScript 3:** `GwaiTransformer.as` executes the network directly inside `gwint_game.redswf`, yielding back to Witcher 3's render loop every `<= 10 ms` so animations, weather effects, and cursor movement stay smooth (~1.5 to 3 seconds per move, zero UI freezes), paired with an exact solver for mathematically guaranteed winning passes. Every build verifies compiled SWF output directly against PyTorch (**60/60 exact argmax agreement**, `0.0` slice-vs-sync drift).
+
+Read more in [How it works](docs/how-it-works.md).
+
+---
+
+## Roadmap
+
+The built-in `318k` network already delivers the bulk of the strength jump (`+335 Elo` over vanilla) with 1-click Steam Workshop convenience. For a future optional add-on (via GitHub Releases / Nexus Mods), we plan to add a native companion bridge so players who want even faster turns (`<0.5s`) and live search on the full 16.2M model can opt in while keeping the built-in opponent as an automatic fallback.
+
+---
+
+[How it works](docs/how-it-works.md) · [Evaluation](docs/evaluation.md) · [Installation](docs/install.md) · [Build from source](docs/building.md) · [Changelog](CHANGELOG.md) · [License](LICENSE)

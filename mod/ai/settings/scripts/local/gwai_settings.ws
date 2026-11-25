@@ -139,6 +139,8 @@ function GwaiMenuAppend(storage : CScriptedFlashValueStorage, entries : CScripte
     var page : CScriptedFlashObject;
     var pages : CScriptedFlashArray;
     var controls : CScriptedFlashArray;
+    var generatedControls : CScriptedFlashArray;
+    var control : CScriptedFlashObject;
     var index : int;
     var cfg : CInGameConfigWrapper = theGame.GetInGameConfigWrapper();
     for (index = 0; index < entries.GetLength(); index += 1)
@@ -169,10 +171,16 @@ function GwaiMenuAppend(storage : CScriptedFlashValueStorage, entries : CScripte
     page.SetMemberFlashString("listTitle", "Gwent: Trained Opponents");
     page.SetMemberFlashUInt("tag", NameToFlashUInt('MenuSelector'));
     page.SetMemberFlashUInt("type", IGMActionType_MenuLastHolder);
-    controls = GwaiMenuControls(storage);
-    if (!isMainMenu)
+    generatedControls = GwaiMenuControls(storage);
+    controls = storage.CreateTempFlashArray();
+    for (index = 0; index < generatedControls.GetLength(); index += 1)
     {
-        IngameMenu_AddGwentDifficultyOption(storage, controls);
+        control = generatedControls.GetElementFlashObject(index);
+        controls.PushBackFlashObject(control);
+        if (!isMainMenu && control.GetMemberFlashString("id") == "GwaiEnabled")
+        {
+            IngameMenu_AddGwentDifficultyOption(storage, controls);
+        }
     }
     page.SetMemberFlashArray("subElements", controls);
     pages.PushBackFlashObject(page);
@@ -433,7 +441,7 @@ function GwaiDiagnosticsInitialize() : void
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "first_error", "");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "last_error", "");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "vanilla_difficulty", IntToString(FactsQueryLatestValue('gwent_difficulty')));
-    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "build", "0.1.2");
+    cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "build", "1.0.0");
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "practice", IntToString(theGame.GetGwintManager().gwaiDevAI));
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "policy_tier", IntToString(policyTier));
     cfg.SetRawConfigValueByStr("W3GwentAIDiagnostics", "opponent", opponent);
@@ -495,7 +503,7 @@ function GwaiLatestMatchText(separator : string, richText : bool) : string
     if (enabled == "false") { selected = "Stock game AI"; }
     if (enabled == "true")
     {
-        selected = "Trained AI (" + GwaiDifficultyLabel(StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "policy_tier"), 3)) + ")";
+        selected = "Trained Opponents (" + GwaiDifficultyLabel(StringToInt(cfg.GetRawConfigValueByStr("W3GwentAIDiagnostics", "policy_tier"), 3)) + ")";
     }
     if (stock > 0 && network == 0 && vanilla == 0 && greedy == 0) { status = "Stock AI only"; }
     if (network == 0 && (vanilla > 0 || greedy > 0)) { status = "Fallback AI used; no network choice recorded"; }

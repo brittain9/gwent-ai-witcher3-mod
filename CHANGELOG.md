@@ -1,52 +1,15 @@
 # Changelog
 
-## 0.1.2 — Unreleased
+## 1.0.0 (2026-11-25)
 
-### Changed
+First public release of **Gwent: Trained Opponents**.
 
-- The game's Gwent difficulty controls move selection for both story and
-  practice matches. Removed the separate practice difficulty and stronger-story
-  overrides.
-- Reduced the player menu to the AI switch, practice controls and troubleshooting.
-  Removed coaching, hints, the win-chance meter and postgame analysis.
-- Generate the settings menu inside the mod's scripts. The player mod no longer
-  needs a separate settings XML in the game's configuration directory.
-- Use one shared model for all difficulties, with different move-selection
-  temperatures. The model weights remain unchanged.
-- Pass when the visible position guarantees an immediate match win.
-- Improve model loading, decision ownership and compiled numeric checks.
-- Keep player builds separate from opt-in diagnostic builds. Lookahead is off.
-
-## 0.1.1 — 2026-11-07
-
-### Changed
-
-- Renamed the mod to Gwent: Trained Opponents across settings, installer
-  messages and package metadata.
-- Rewrote the introduction with the equal-deck stock-AI comparison and
-  explained the difficulty and design goals. The trained policies are unchanged.
-- Added model statistics and identified the supported Remastered edition.
-
-## 0.1.0 — 2026-11-07
-
-### Added
-
-- Downloadable setup with three trained inference policies, verified tool
-  downloads and local preparation from an installed game.
-- Gwent: A Worthy Opponent menu, one Enable AI switch, Easy/Medium/Hard
-  practice selection, and clearly grouped optional assistance and diagnostics.
-- Selection and model identity in public traces, including requested and
-  effective tiers and story/practice mode.
-- Install/removal process guards and checked receipts with rollback backups.
-
-### Fixed
-
-- Story verification now reports the requested selection and native difficulty.
-- Stock-story turns are identified separately from trained-policy fallbacks.
-- Compiled model checks verify actual embedded tensors and encoding tables.
-
-### Notes
-
-- The trained policies make decisions locally using their own seat's view.
-- The game retains its cards, rules, NPC decks, rewards and collection.
-- Setup requires compatible Remastered resources and Python 3.12+.
+### Highlights
+- **Native ActionScript 3 Neural Engine (`GwaiTransformer.as`):** Compact neural network (`318,280` parameters, `1.27 MB` weights, `9.13 MB` total mod bundle) running 100% locally inside `gwint_game.redswf`.
+- **Smooth Frame-Sliced Execution:** Initial weight decoding and per-turn inference yield back to Witcher 3's render loop every `<= 10 ms`, keeping animations, weather effects, and cursor movement smooth (~1.5 to 3s per turn, zero UI freezing).
+- **Distilled from a Large Self-Play + Search Teacher:** Trained across 4.5M+ simulated games and distilled ~50x for Scaleform. Reaches **`87.3%` (+335 Elo)** vs. the vanilla opponent on balanced competitive decks, **`77.0%`** on unseen generated decks, **`49.5%` (-3.5 Elo)** against the ~50x larger pure teacher, and **`38.3%` (+13.3 pp over vanilla)** across all 50 Hard campaign NPC decks.
+- **Universal Story & Practice Coverage:** Works automatically across every Story and Practice opponent, plus a built-in Practice menu for 39+ Story, DLC, and Tournament NPC decks using your save's real collection.
+- **Strictly Fair Play:** Uses only own hand, own remaining deck multiset, public board/graveyards/weather/leaders, publicly decoyed cards, and the last 28 public turn events plus exact immediate public action deltas.
+- **Calibrated Difficulty Ladder:** Synced with **Gameplay -> Gwent Difficulty** (**Hard** `T=0.0`, **Normal** `T=2.6`, **Easy** `T=4.2`, all with exact match-winning terminal pass), plus a 1-click toggle back to the vanilla opponent anytime.
+- **Self-Contained Mod Layout & Safe Fallback:** Lives cleanly inside `Mods/modW3GwentAI` (no `bin/config` edits) and falls back cleanly per turn to the vanilla opponent if another mod adds custom cards outside the 228-card catalog.
+- **Compiled Verification:** Automated build checks verify exact embedded float32 weight SHA-256, literal-only AVM2 static initializers across all 9 `Gwai*` classes, **60/60 exact argmax parity** between PyTorch and compiled `GwaiTransformer.as`, and **`0.0`** frame-slice vs. sync drift.

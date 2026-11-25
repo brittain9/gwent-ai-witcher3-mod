@@ -37,6 +37,8 @@ function loadController({
   jsonAvailable = true,
   forgedAction = false,
   compiledSourcePath = null,
+  selector = "group-first",
+  fixtureDraw = true,
 } = {}) {
   const compiled = compiledSourcePath || process.env.GWAI_SHARED_CONTROLLER_AS3;
   let source = fs.readFileSync(
@@ -44,7 +46,7 @@ function loadController({
     "utf8",
   );
   if (compiled) {
-    const { classBody } = require("../mod/ai/node/shared_numeric");
+    const { classBody } = require(path.join(ROOT, "mod/ai/node/shared_numeric"));
     source =
       "internal class GwaiSharedController {\n" +
       classBody(source, "GwaiSharedController") +
@@ -80,7 +82,7 @@ function loadController({
       ") {",
     )
     .replace(
-      /:\s*(?:Vector\.<Number>|Object|Array|Number|String|Boolean|int|uint|\*)(?=[,\s)=;])/g,
+      /:\s*(?:Vector\.<Number>|Object|Array|Number|String|Boolean|Function|int|uint|\*)(?=[,\s)=;])/g,
       "",
     )
     .replace(/flash\.utils\.getQualifiedClassName/g, "getQualifiedClassName")
@@ -120,6 +122,7 @@ function loadController({
           throw new Error("difficulty outside 1..3");
         }
         return {
+          selector,
           temperature: 0,
           terminal_pass_v1: terminalPass,
           planning_worlds: 0,
@@ -147,11 +150,13 @@ function loadController({
         blocks,
         temperature,
         profile,
+        uniforms,
+        selectedMode,
       ) => {
-        math.random();
+        if (fixtureDraw) math.random();
         calls.push(
           JSON.parse(
-            JSON.stringify({ observation, legal, temperature, profile }),
+            JSON.stringify({ observation, legal, temperature, profile, selectedMode }),
           ),
         );
         if (inferenceError)
@@ -559,4 +564,17 @@ test("terminal pass needs neither JSON runtime nor neural diagnostics", () => {
   assert.equal(result.modelCall, false);
   assert.equal(runtime.records.length, 0);
   assert.equal(runtime.loads(), 0);
+});
+
+
+test("terminal pass compiled controller forwards explicit selector without action RNG", () => {
+  const runtime = loadController({ selector: "joint-argmax", fixtureDraw: false });
+  const controller = new runtime.Controller(3);
+  controller.begin(actorView(), [PLAY, PASS]);
+  assert.equal(controller.advance(), true);
+  assert.equal(runtime.calls.length, 1);
+  assert.equal(runtime.calls[0].selectedMode, "joint-argmax");
+  assert.equal(runtime.calls[0].temperature, 0);
+  assert.equal(runtime.draws(), 0);
+  assert.throws(() => new (loadController({ selector: "bad" }).Controller)(3), /invalid shared controller selector/);
 });

@@ -2628,6 +2628,11 @@ def main() -> int:
         metavar="TIER=PATH",
         help="override a tier checkpoint (easy, normal, hard); repeatable",
     )
+    parser.add_argument(
+        "--controller-config",
+        type=Path,
+        help="explicit shared-player controller settings",
+    )
     parser.add_argument("--easy-temperature", type=float, default=0.0)
     parser.add_argument(
         "--output-dir",
@@ -2646,6 +2651,7 @@ def main() -> int:
             or args.legacy_tier_build
             or args.tier_checkpoint
             or args.policy_bundle
+            or args.controller_config
         ):
             parser.error("--shared-manifest selects its own inputs and edition")
         from shared_player.compiler import build_player
@@ -2670,11 +2676,14 @@ def main() -> int:
             output=args.output_dir,
             observation_profile=args.observation_profile,
             diagnostic=args.diagnostic,
+            controller_config=args.controller_config,
         )
         print(json.dumps(report, indent=2, sort_keys=True))
         return (
             0 if report.get("status") == "offline_compiled_and_export_verified" else 1
         )
+    if args.controller_config is not None:
+        parser.error("--controller-config requires a shared-player build")
     overrides: dict[str, Path] = {}
     for assignment in args.tier_checkpoint:
         tier, separator, value = assignment.partition("=")

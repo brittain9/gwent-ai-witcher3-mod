@@ -15,6 +15,7 @@ from .bundle import (
     _json,
     _payload,
     validate_controller,
+    serving_identity,
     validate_metadata,
 )
 
@@ -61,6 +62,7 @@ def build_sources(
     metadata = validate_metadata(
         {name: prepared.metadata[name] for name in METADATA_FIELDS}
     )
+    metadata["serving"] = prepared.metadata["serving"]
     class_name = f"GwaiNetWeightsData_{metadata['checkpoint_sha256'][:16]}"
     if prepared.class_name != class_name:
         raise SharedBundleError("prepared shared model class identity differs")
@@ -71,6 +73,8 @@ def build_sources(
     if prepared.header_path.read_text(encoding="utf-8") != header:
         raise SharedBundleError("prepared shared model header changed")
     controller = validate_controller(_json(prepared.controller_path))
+    if prepared.metadata.get("serving") != serving_identity(controller):
+        raise SharedBundleError("serving sources or controller settings changed")
     template = (AS3_ROOT / "GwaiSharedController.as").read_text(encoding="utf-8")
     if template.count(MARKER) != 1:
         raise SharedBundleError(
@@ -83,7 +87,7 @@ def build_sources(
     )
     if edition == "diagnostic" and diagnostic_mode == "timing-only":
         before = "      var result:Object = GwaiNetPolicy.evaluate("
-        after = "         Number(this._settings.temperature),String(data.OBSERVATION_PROFILE_ID),this._actionUniforms);"
+        after = "         Number(this._settings.temperature),String(data.OBSERVATION_PROFILE_ID),this._actionUniforms,String(this._settings.selector));"
         if template.count(before) != 1 or template.count(after) != 1:
             raise SharedBundleError("private model timing seam differs")
         weights = (
@@ -112,6 +116,12 @@ def build_sources(
             1,
         )
     sources = {
+        "GwaiTerminalCatalog": (AS3_ROOT / "GwaiTerminalCatalog.as").read_text(
+            encoding="utf-8"
+        ),
+        "GwaiTerminalTactics": (AS3_ROOT / "GwaiTerminalTactics.as").read_text(
+            encoding="utf-8"
+        ),
         "GwaiNetPolicy": shared_numeric_source(),
         "GwaiNetWeights": (AS3_ROOT / "GwaiNetWeights.as").read_text(encoding="utf-8"),
         "GwaiSharedController": template.replace(MARKER, record),
@@ -160,6 +170,10 @@ def _configuration(
     ):
         value = json.dumps(metadata[field], allow_nan=False)
         lines.append(f"   public static const {field.upper()}:String = {value};")
+    for field, value in metadata["serving"].items():
+        lines.append(
+            f"   public static const SERVING_{field.upper()}:String = {json.dumps(value)};"
+        )
     lines.extend(["}", ""])
     return "\n".join(lines)
 

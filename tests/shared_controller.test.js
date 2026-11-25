@@ -63,7 +63,7 @@ function loadController({
       ") {",
     )
     .replace(
-      /:\s*(?:Object|Array|Number|String|Boolean|int|uint)(?=[,\s)=;])/g,
+      /:\s*(?:Object|Array|Number|String|Boolean|Function|int|uint)(?=[,\s)=;])/g,
       "",
     )
     .replace(/flash\.utils\.getQualifiedClassName/g, "getQualifiedClassName")
@@ -101,6 +101,7 @@ function loadController({
           throw new Error("difficulty outside 1..3");
         }
         return {
+          selector: "group-first",
           temperature: 0,
           planning_worlds: 0,
           rollout_primary_turns: 0,

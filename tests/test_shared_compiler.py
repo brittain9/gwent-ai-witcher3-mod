@@ -57,6 +57,17 @@ class SharedCompilerTests(unittest.TestCase):
             with self.assertRaises(CompilerError):
                 verify_compiled_helpers(sources, metadata)
 
+    def test_changed_compiled_serving_identity_is_refused(self):
+        from shared_player.compiler import CompilerError, verify_compiled_helpers
+
+        with tempfile.TemporaryDirectory() as directory:
+            sources, metadata = helpers(Path(directory))
+            source = sources["GwaiSharedConfig"]
+            original = metadata["serving"]["policy_source_sha256"]
+            sources["GwaiSharedConfig"] = source.replace(original, "0" * 64)
+            with self.assertRaises(CompilerError):
+                verify_compiled_helpers(sources, metadata)
+
     def test_extra_obsolete_class_or_missing_value_helper_is_refused(self):
         from shared_player.compiler import CompilerError, verify_compiled_helpers
 

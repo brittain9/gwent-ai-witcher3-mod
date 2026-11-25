@@ -95,7 +95,11 @@ def write_embed_header(
         "{",
         "   public static const EMBEDDED:Boolean = true;",
         f'   public static const CHECKPOINT_SHA256:String = "{metadata["checkpoint_sha256"]}";',
-        f"   public static const UPDATE_COUNT:int = {metadata['update_count']};",
+        (
+            "   public static const UPDATE_COUNT:Object = null;"
+            if metadata["update_count"] is None
+            else f"   public static const UPDATE_COUNT:int = {metadata['update_count']};"
+        ),
         f'   public static const EXPORT_SHA256:String = "{metadata["export_sha256"]}";',
         f'   public static const CATALOG_SHA256:String = "{metadata["catalog_sha256"]}";',
         f"   public static const WEIGHT_COUNT:int = {metadata['parameter_count']};",

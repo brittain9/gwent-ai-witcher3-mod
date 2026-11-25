@@ -62,6 +62,16 @@ class SharedBuildTests(unittest.TestCase):
             self.assertEqual(build.call_args.kwargs["checkpoint"], Path("one.pt"))
             self.assertIsNone(build.call_args.kwargs["policy_bundle"])
 
+    def test_other_builds_reject_shared_controller_config(self):
+        from scripts import build_mod
+
+        with patch(
+            "sys.argv",
+            ["build_mod", "--legacy-tier-build", "--controller-config", "ignored.json"],
+        ):
+            with self.assertRaises(SystemExit):
+                build_mod.main()
+
     def test_direct_cli_resolves_shared_package_without_pythonpath(self):
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as temporary:

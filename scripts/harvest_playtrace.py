@@ -169,9 +169,21 @@ def _selection(selection: Any) -> None:
         "checkpoint_sha256",
         "weights_sha256",
     }
-    _keys(selection, fields, "AI selection")
-    if set(selection) != fields or type(selection["enabled"]) is not bool:
+    _keys(selection, fields | {"controller_source_kind"}, "AI selection")
+    if not fields <= set(selection) or type(selection["enabled"]) is not bool:
         raise PlayTraceError("AI selection is incomplete")
+    if "controller_source_kind" in selection:
+        source = selection["controller_source_kind"]
+        if not isinstance(source, str) or source not in {
+            "",  # Before the first decision, including stock AI selection.
+            "network",
+            "vanilla",
+            "terminal-pass-guard",
+            "nilfgaard-terminal-pass",
+            "positive-unit-closure",
+            "fair-search-v1",
+        }:
+            raise PlayTraceError("AI selection has an invalid controller source")
     for key in ("requested_tier", "npc_difficulty"):
         if type(selection[key]) is not int or selection[key] not in (1, 2, 3):
             raise PlayTraceError("AI selection has an invalid requested difficulty")
@@ -367,11 +379,18 @@ def validate_events(events: list[dict[str, Any]], build: str, status: str) -> No
                 _integer(transaction["target_slot"], "transaction.target_slot", -1)
                 _integer(transaction["target_seat"], "transaction.target_seat", -1)
         if kind == "decision_source":
-            if event.get("source") not in {"network", "stock", "vanilla", "greedy"}:
+            if not isinstance(event.get("source"), str) or event["source"] not in {
+                "network",
+                "stock",
+                "vanilla",
+                "greedy",
+                "rule",
+                "search",
+            }:
                 raise PlayTraceError("unknown decision source")
             if (
                 "selection" in event
-                and event["source"] in {"network", "greedy"}
+                and event["source"] in {"network", "greedy", "rule", "search"}
                 and not event["selection"]["enabled"]
             ):
                 raise PlayTraceError("network source contradicts disabled selection")

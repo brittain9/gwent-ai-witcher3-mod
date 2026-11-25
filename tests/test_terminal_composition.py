@@ -23,10 +23,15 @@ class TerminalCompositionTest(unittest.TestCase):
             "this._gwaiRunner.begin(this._gwaiView.observation,this._gwaiMoves);", ai
         )
         self.assertIn("this._gwaiRunner.sourceKind", ai)
-        self.assertIn(
-            'controllerSource == "terminal-pass-guard" ? "rule"',
-            result["GwintGameFlowController"],
-        )
+        for source in (
+            "terminal-pass-guard",
+            "nilfgaard-terminal-pass",
+            "positive-unit-closure",
+        ):
+            self.assertIn(
+                'controllerSource == "' + source + '"',
+                result["GwintGameFlowController"],
+            )
 
     def test_existing_sink_explicitly_counts_rule_and_search_with_same_menu(self):
         from shared_player.terminal_composition import patch_settings_asset
@@ -40,8 +45,10 @@ class TerminalCompositionTest(unittest.TestCase):
         for category in ("rule", "search"):
             self.assertIn('"W3GwentAIDiagnostics", "' + category + '", "0"', patched)
             self.assertIn('kind != "' + category + '"', patched)
-        self.assertIn("Proven match-winning passes:", patched)
-        self.assertIn("Search choices:", patched)
+        self.assertRegex(
+            patched,
+            r"text \+= separator \+ .*IntToString\(search\).*IntToString\(rule\)",
+        )
         with self.assertRaises(ValueError):
             patch_settings_asset(patched.encode())
 
@@ -62,7 +69,7 @@ class TerminalCompositionTest(unittest.TestCase):
         program = (
             "const assert=require('node:assert/strict'); const notify=new Function('profile','fallback','detail','controllerSource',"
             + json.dumps(body)
-            + "); const records=[];const receiver={_gwaiSettings:{signal:false},gwaiRecordDecision:(...a)=>records.push(a)};for(const [source,expected] of [['network','network'],['terminal-pass-guard','rule'],['fair-search-v1','search']]){records.length=0;notify.call(receiver,3,false,'public detail',source);assert.deepEqual(records,[[expected,'public detail']]);}records.length=0;notify.call(receiver,3,true,'failure','terminal-pass-guard');assert.deepEqual(records,[['vanilla','failure']]);"
+            + "); const records=[];const receiver={_gwaiSettings:{signal:false},gwaiRecordDecision:(...a)=>records.push(a)};for(const [source,expected] of [['network','network'],['terminal-pass-guard','rule'],['nilfgaard-terminal-pass','rule'],['positive-unit-closure','rule'],['fair-search-v1','search']]){records.length=0;notify.call(receiver,3,false,'public detail',source);assert.deepEqual(records,[[expected,'public detail']]);records.length=0;notify.call(receiver,3,true,'failure',source);assert.deepEqual(records,[['vanilla','failure']]);}"
         )
         result = subprocess.run(
             [

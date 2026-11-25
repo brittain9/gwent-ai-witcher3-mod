@@ -12,6 +12,8 @@ from .bundle import (
     COUNTER_CONTRACT,
     INFORMATION_PROTOCOL,
     SELECTION_RULE,
+    validate_controller,
+    _json,
 )
 from .compiler import build_player
 from .inputs import ROOT, descriptor, prepare
@@ -53,6 +55,7 @@ def build(
     output=None,
     observation_profile=None,
     diagnostic=False,
+    controller_config=None,
 ):
     catalog = Path(catalog or ROOT / ".runtime/catalog.json")
     output = Path(
@@ -128,26 +131,25 @@ def build(
         + "\n"
     )
     controller = work / "controller.json"
-    controller.write_text(
-        json.dumps(
-            {
-                "enabled": True,
-                "mode": "policy-only",
-                "terminal_pass_v1": True,
-                "difficulties": {
-                    str(i): {
-                        "temperature": t,
-                        "planning_worlds": 0,
-                        "rollout_primary_turns": 0,
-                        "deadline_ms": 0,
-                    }
-                    for i, t in enumerate((1.0, 0.25, 0.0), 1)
-                },
+    if controller_config is None:
+        settings = {
+            "enabled": True,
+            "mode": "policy-only",
+            "terminal_pass_v1": True,
+            "difficulties": {
+                str(i): {
+                    "selector": "group-first",
+                    "temperature": temperature,
+                    "planning_worlds": 0,
+                    "rollout_primary_turns": 0,
+                    "deadline_ms": 0,
+                }
+                for i, temperature in enumerate((1.0, 0.25, 0.0), 1)
             },
-            indent=2,
-        )
-        + "\n"
-    )
+        }
+    else:
+        settings = _json(Path(controller_config))
+    controller.write_text(json.dumps(validate_controller(settings), indent=2) + "\n")
     manifest = prepare(
         metadata=exported / "metadata.json",
         receipt=receipt,

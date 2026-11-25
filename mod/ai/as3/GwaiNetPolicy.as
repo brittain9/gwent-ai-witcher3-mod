@@ -76,11 +76,14 @@ internal class GwaiNetPolicy
    public static function evaluate(observation:Object, legalActions:Array, cardIds:Array, cardEffects:Array,
                                    weights:Vector.<Number>, offsets:Object, width:int, blocks:int,
                                    temperature:Number = 0.0,
-                                   observationProfile:String = "full-faction-v1", actionUniforms:Array = null) : Object
+                                   observationProfile:String = "full-faction-v1", actionUniforms:Array = null,
+                                   selectionMode:String = "group-first") : Object
    {
       if(observation == null || legalActions == null || legalActions.length == 0)
          throw new Error("network inference requires a seat observation and legal actions");
       if(!isFinite(temperature) || temperature < 0) throw new Error("policy temperature must be finite and non-negative");
+      if(selectionMode != "group-first" && selectionMode != "joint-argmax") throw new Error("invalid policy selector");
+      if(selectionMode == "joint-argmax" && temperature != 0) throw new Error("joint argmax requires zero temperature");
       if(temperature > 0)
       {
          if(actionUniforms == null || actionUniforms.length != 2) throw new Error("temperature selection requires two owned action uniforms");
@@ -171,6 +174,7 @@ internal class GwaiNetPolicy
          if(bestAction < 0 || Number(localLogits[actionIndex]) > Number(localLogits[bestAction])) bestAction = actionIndex;
       }
       if(temperature > 0) bestAction = sampleLogit(localLogits,actionCandidates,temperature,Number(actionUniforms[1]));
+      if(selectionMode == "joint-argmax") bestAction = jointArgmax(groupLogits,localLogits,actionGroupIds);
       if(bestAction < 0) throw new Error("network selected a group without a legal action");
       return {
          observation_profile_id:observationProfile,
@@ -488,6 +492,41 @@ internal class GwaiNetPolicy
    public static function clamp(value:Number, minimum:Number, maximum:Number) : Number
    {
       return Math.max(minimum,Math.min(maximum,value));
+   }
+
+   // Compare log P(group) + log P(action | group), omitting the shared group normalizer.
+   // Strict comparison preserves the first action in canonical legal-action order.
+   public static function jointArgmax(groups:Array, local:Array, actionGroups:Array) : int
+   {
+      var maxima:Array = [];
+      var totals:Array = [];
+      var group:int;
+      for(group = 0; group < groups.length; group++)
+      {
+         maxima.push(Number.NEGATIVE_INFINITY);
+         totals.push(0);
+      }
+      var action:int;
+      for(action = 0; action < local.length; action++)
+      {
+         group = int(actionGroups[action]);
+         if(Number(local[action]) > Number(maxima[group])) maxima[group] = Number(local[action]);
+      }
+      for(action = 0; action < local.length; action++)
+      {
+         group = int(actionGroups[action]);
+         totals[group] = Number(totals[group]) + Math.exp(Number(local[action]) - Number(maxima[group]));
+      }
+      var best:int = -1;
+      var bestScore:Number = Number.NEGATIVE_INFINITY;
+      for(action = 0; action < local.length; action++)
+      {
+         group = int(actionGroups[action]);
+         var score:Number = Number(groups[group]) + (Number(local[action]) - Number(maxima[group])) - Math.log(Number(totals[group]));
+         if(best < 0 || score > bestScore) { best = action; bestScore = score; }
+      }
+      if(best < 0) throw new Error("joint argmax requires a legal action");
+      return best;
    }
 
    public static function argmax(values:Array) : int

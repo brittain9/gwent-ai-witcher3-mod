@@ -60,6 +60,9 @@ def patch_native_runtime(originals, helpers, public_trace, *, timing=False):
     )
     patched = patch_owned_actions(patch_primary_counter(patched))
     patched = patch_terminal_host(patched)
+    from .terminal_tactics_host import patch_proof_commit
+
+    patched = patch_proof_commit(patched)
     return patch_timing_runtime(patched)[0] if timing else patched
 
 
@@ -69,7 +72,7 @@ def verify_compiled_primary_counter(native_sources):
         "AIPlayerController": {
             "gwaiPrimaryBegin": 1,
             "gwaiPrimaryPass": 1,
-            "gwaiPrimaryObservationReady": 1,
+            "gwaiPrimaryObservationReady": 3,
         },
         "BasePlayerController": {
             "gwaiPrimaryTicket": 1,
@@ -176,6 +179,25 @@ def _spec(spec):
     return path
 
 
+def verify_compiled_settings(config_source, controller):
+    """Check each emitted difficulty against the validated controller settings."""
+    for level, settings in controller["difficulties"].items():
+        match = re.search(
+            r"if\(difficulty == "
+            + re.escape(level)
+            + r"\)[\s\S]*?return\s*(\{[\s\S]*?\});",
+            config_source,
+        )
+        _need(match is not None, "compiled difficulty is missing: " + level)
+        expected = dict(settings)
+        if "terminal_pass_v1" in controller:
+            expected["terminal_pass_v1"] = controller["terminal_pass_v1"]
+        _need(
+            json.loads(match.group(1)) == expected,
+            "compiled difficulty settings differ: " + level,
+        )
+
+
 def verify_compiled_helpers(helpers, metadata):
     """Verify decoded compiled tensors/tables and explicit shared constants."""
     from scripts import compiled_policy
@@ -183,6 +205,8 @@ def verify_compiled_helpers(helpers, metadata):
     model_name = f"GwaiNetWeightsData_{metadata['checkpoint_sha256'][:16]}"
     expected = {
         "GwaiCapture",
+        "GwaiTerminalCatalog",
+        "GwaiTerminalTactics",
         "GwaiNetPolicy",
         "GwaiNetWeights",
         "GwaiSharedController",
@@ -219,6 +243,14 @@ def verify_compiled_helpers(helpers, metadata):
             )
     except (ValueError, KeyError, TypeError) as error:
         raise CompilerError(f"compiled policy identity differs: {error}") from error
+    for field, value in metadata["serving"].items():
+        _need(
+            compiled_policy._constant(
+                helpers["GwaiSharedConfig"], "SERVING_" + field.upper()
+            )
+            == value,
+            "compiled serving identity differs: " + field,
+        )
     policy = helpers["GwaiNetPolicy"]
     _need(
         all(
@@ -603,6 +635,12 @@ def build_player(manifest_path, output_dir):
             for name in native_classes
         }
         patched = patch_native_runtime(originals, helpers, public_trace)
+        if edition == "diagnostic" and diagnostic_mode == "policy":
+            from .terminal_tactics_diagnostic import diagnostic_proof_trace
+
+            patched, public_trace = diagnostic_proof_trace(
+                patched, public_trace, diagnostic=True
+            )
         timing_authored = {}
         if diagnostic_mode == "timing-only":
             patched, timing_authored = patch_timing_runtime(patched)
@@ -634,6 +672,7 @@ def build_player(manifest_path, output_dir):
             for name in helpers
         }
         embedded = verify_compiled_helpers(exported_helpers, prepared.metadata)
+        verify_compiled_settings(exported_helpers["GwaiSharedConfig"], controller)
         compiled_native = {
             name: _class_file(verify_dir, name).read_text(encoding="utf-8")
             for name in native_classes

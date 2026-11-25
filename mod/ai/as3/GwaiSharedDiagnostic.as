@@ -60,7 +60,14 @@ internal class GwaiSharedDiagnostic
             observation:observation,legal_actions:legal,selected_action:chosen,value:value};
          if(result != null)
          {
-            record.encoded_observation = result.observation;
+            // The policy returns a typed Vector; the private JSON writer accepts
+            // plain Arrays. Copy only for diagnostics, without changing inference.
+            var encoded:Vector.<Number> = result.observation as Vector.<Number>;
+            if(encoded == null) throw new Error("missing encoded observation");
+            var encodedArray:Array = [];
+            for(var encodedIndex:int = 0; encodedIndex < encoded.length; encodedIndex++)
+               encodedArray.push(encoded[encodedIndex]);
+            record.encoded_observation = encodedArray;
             record.group_logits = result.group_logits;
             record.local_logits = result.local_logits;
             record.action_group_ids = result.action_group_ids;

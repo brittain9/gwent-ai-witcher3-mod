@@ -16,6 +16,11 @@ function diagnostic() {
     .replace(/(?:public|private) static var/g, "var")
     .replace(/(?:public|private) static function/g, "function")
     .replace(/\)\s*:\s*(?:void|String|int|Object|Boolean)\s*\{/g, ") {")
+    .replace(/:\s*Vector\.<Number>(?=[,\s)=;])/g, "")
+    .replace(
+      /\bresult\.observation\s+as\s+Vector\.<Number>/g,
+      "asNumberVector(result.observation)",
+    )
     .replace(
       /:\s*(?:Object|Array|Number|String|Boolean|int|uint)(?=[,\s)=;])/g,
       "",
@@ -35,6 +40,7 @@ function diagnostic() {
   const context = {
     JSON: undefined,
     Math: math,
+    asNumberVector: (value) => (value instanceof Float64Array ? value : null),
     GwaiPlayTrace: { encodeDiagnostic: JSON.stringify },
     GwaiSharedConfig: {
       data: () => ({
@@ -118,6 +124,56 @@ test("diagnostic refuses expanded hidden fields before recording a policy input"
     runtime.events.some(
       (event) => event.name === "OnW3GwentPolicyDiagnosticError",
     ),
+  );
+});
+test("diagnostic copies a typed observation to a plain encoded array", () => {
+  const runtime = diagnostic();
+  const observation = new Float64Array([1.5, -2, 3]);
+  runtime.api.begin();
+  runtime.api.record(
+    view(),
+    [{ id: "pass", kind: "pass" }],
+    { id: "pass", kind: "pass" },
+    0.5,
+    {
+      observation,
+      group_logits: [],
+      local_logits: [],
+      action_group_ids: [],
+      action_features: [],
+      group_features: [],
+      chosen_index: 0,
+      outcome_probabilities: [],
+    },
+  );
+  observation[0] = 99;
+  const records = runtime.events
+    .filter((event) => event.name === "OnW3GwentPolicyDiagnosticRecord")
+    .map((event) => JSON.parse(event.args[0]));
+  assert.deepEqual(
+    records.find((record) => record.event === "policy_input").encoded_observation,
+    [1.5, -2, 3],
+  );
+  assert.equal(runtime.api.rejectedRecords(), 0);
+});
+test("diagnostic rejects a non-Vector encoded observation", () => {
+  const runtime = diagnostic();
+  runtime.api.begin();
+  runtime.api.record(
+    view(),
+    [{ id: "pass", kind: "pass" }],
+    { id: "pass", kind: "pass" },
+    0.5,
+    { observation: [1, 2, 3] },
+  );
+  assert.ok(
+    runtime.events.some(
+      (event) => event.name === "OnW3GwentPolicyDiagnosticError",
+    ),
+  );
+  assert.equal(
+    runtime.events.filter((event) => event.name === "OnW3GwentPolicyDiagnosticRecord").length,
+    1,
   );
 });
 test("diagnostic bounds encoded records and reports refusal through the native sink", () => {

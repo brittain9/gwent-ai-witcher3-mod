@@ -33,6 +33,50 @@ DEFAULT_CATALOG = PROJECT_ROOT / ".runtime/catalog.json"
 DEFAULT_OUTPUT = PROJECT_ROOT / ".runtime/policy-as3"
 
 
+def checkpoint_update_count(checkpoint: dict) -> int | None:
+    """Report unknown history for an explicit, attested profile initialization."""
+    identity = checkpoint.get("identity", {})
+    if checkpoint.get("format") == "faction-profile-initialization-v1":
+        source = checkpoint.get("source_checkpoint", {})
+        proof = checkpoint.get("derivation", {})
+        digest = re.compile(r"[0-9a-f]{64}\Z")
+        if not (
+            identity.get("data_kind") == "profile-migration-initialization"
+            and "updates" not in identity
+            and type(identity.get("optimizer_steps_performed")) is int
+            and identity["optimizer_steps_performed"] == 0
+            and identity.get("trained_with_full_profile") is False
+            and identity.get("source_profile") == "faction-unknown-v1"
+            and identity.get("observation_profile_id") == "full-faction-v1"
+            and checkpoint.get("model_config", {}).get("observation_profile_id")
+            == "full-faction-v1"
+            and source.get("source_profile") == "faction-unknown-v1"
+            and source.get("role") in {"legacy-baseline", "shared-onpolicy"}
+            and isinstance(source.get("sha256"), str)
+            and digest.fullmatch(source["sha256"])
+            and isinstance(identity.get("manifest_sha256"), str)
+            and digest.fullmatch(identity["manifest_sha256"])
+            and proof.get("operation") == "faction-profile-initialization-v1"
+            and proof.get("source_profile") == "faction-unknown-v1"
+            and proof.get("target_profile") == "full-faction-v1"
+            and proof.get("architecture_changed") is False
+            and isinstance(identity.get("tensor_sha256"), str)
+            and digest.fullmatch(identity["tensor_sha256"])
+            and isinstance(identity.get("source_tensor_sha256"), str)
+            and digest.fullmatch(identity["source_tensor_sha256"])
+            and proof.get("derived_tensor_sha256") == identity["tensor_sha256"]
+            and proof.get("source_tensor_sha256") == identity["source_tensor_sha256"]
+        ):
+            raise ValueError("invalid profile initialization provenance")
+        return None
+    updates = identity.get("updates")
+    if type(updates) is not int or updates < 0:
+        raise ValueError(
+            "checkpoint identity must contain a non-negative integer update count"
+        )
+    return updates
+
+
 def export(
     checkpoint_path: Path,
     catalog_path: Path,
@@ -102,11 +146,7 @@ def export(
     # preserves the checkpoint values; the runtime Vector.<Number> expands
     # these values to Number as it loads them.
     payload = b"".join(payload_parts)
-    updates = identity.get("updates")
-    if type(updates) is not int or updates < 0:
-        raise ValueError(
-            "checkpoint identity must contain a non-negative integer update count"
-        )
+    updates = checkpoint_update_count(checkpoint)
     card_effects = [
         list(map(int, card.get("effects", [])))
         for card in sorted(catalog["cards"], key=lambda item: int(item["id"]))

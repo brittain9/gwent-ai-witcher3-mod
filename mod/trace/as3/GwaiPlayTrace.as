@@ -4,6 +4,80 @@ internal class GwaiPlayTrace
    private static var sequence:int = 0;
    private static var actionIndex:int = 0;
    private static var pending:Object = null;
+   private static var publicHistory:Array = [];
+   private static var knownHands:Array = [[],[]];
+   private static var recordedRounds:int = 0;
+   private static var lastActionPending:Object = null;
+
+   public static function recentHistory() : Array
+   {
+      var out:Array = [];
+      var start:int = publicHistory.length > 28 ? publicHistory.length - 28 : 0;
+      for(var i:int = start; i < publicHistory.length; i++)
+      {
+         var ev:Object = publicHistory[i];
+         out.push({
+            seat:int(ev.seat),
+            kind:int(ev.kind),
+            template_id:int(ev.template_id),
+            round_index:int(ev.round_index),
+            row:int(ev.row),
+            score_actor:int(ev.score_actor),
+            score_opp:int(ev.score_opp),
+            hand_actor:int(ev.hand_actor),
+            hand_opp:int(ev.hand_opp),
+            opp_passed:Boolean(ev.opp_passed)
+         });
+      }
+      return out;
+   }
+
+   public static function knownOpponentHand(mySeat:int) : Array
+   {
+      var opp:int = mySeat == 0 ? 1 : 0;
+      var src:Array = knownHands[opp];
+      return src == null ? [] : src.concat();
+   }
+
+   private static function slotToRowCode(slotId:int) : int
+   {
+      if(slotId == CardManager.CARD_LIST_LOC_MELEE || slotId == CardManager.CARD_LIST_LOC_MELEEMODIFIERS) return 1;
+      if(slotId == CardManager.CARD_LIST_LOC_RANGED || slotId == CardManager.CARD_LIST_LOC_RANGEDMODIFIERS) return 2;
+      if(slotId == CardManager.CARD_LIST_LOC_SEIGE || slotId == CardManager.CARD_LIST_LOC_SEIGEMODIFIERS) return 3;
+      return 0;
+   }
+
+   private static function syncRoundResults(manager:CardManager) : void
+   {
+      if(manager == null || manager.roundResults == null) return;
+      var played:int = 0;
+      for(var ri:int = 0; ri < manager.roundResults.length; ri++)
+      {
+         var res:GwintRoundResult = manager.roundResults[ri];
+         if(!res.played) continue;
+         played++;
+         if(played > recordedRounds)
+         {
+            var w:int = res.getRoundWinner();
+            var wSeat:int = (w == CardManager.PLAYER_1 || w == CardManager.PLAYER_2) ? w : 2;
+            var h0:int = manager.getCardInstanceList(CardManager.CARD_LIST_LOC_HAND,CardManager.PLAYER_1).length;
+            var h1:int = manager.getCardInstanceList(CardManager.CARD_LIST_LOC_HAND,CardManager.PLAYER_2).length;
+            publicHistory.push({
+               seat:wSeat,
+               kind:5,
+               template_id:0,
+               round_index:ri,
+               row:0,
+               score_actor:int(res.getPlayerScore(CardManager.PLAYER_1)),
+               score_opp:int(res.getPlayerScore(CardManager.PLAYER_2)),
+               hand_actor:h0,
+               hand_opp:h1,
+               opp_passed:false
+            });
+            recordedRounds = played;
+         }
+      }
+   }
 
    public static function begin(enabled:Boolean, manager:CardManager, flow:GwintGameFlowController, round:int, selection:Object = null) : void
    {
@@ -11,6 +85,10 @@ internal class GwaiPlayTrace
       sequence = 0;
       actionIndex = 0;
       pending = null;
+      publicHistory = [];
+      knownHands = [[],[]];
+      recordedRounds = 0;
+      lastActionPending = null;
       if(!enabled) return;
       active = true;
       dispatch("OnW3GwentPlayTraceStart",["__GWAI_TRACE_BUILD__"]);
@@ -24,18 +102,61 @@ internal class GwaiPlayTrace
    // card from the AI's hand before it has actually been played.
    public static function actionStarted(seat:int, transaction:CardTransaction) : void
    {
+      var rec:Object = transactionRecord(transaction);
+      lastActionPending = {seat:seat,committed:false,transaction:rec};
       if(!active) return;
-      pending = {seat:seat,action_id:++actionIndex,committed:false,transaction:transactionRecord(transaction)};
+      pending = {seat:seat,action_id:++actionIndex,committed:false,transaction:rec};
       emit({event:"action_started",seat:seat,action_id:actionIndex});
    }
 
    public static function actionCommitted() : void
    {
+      if(lastActionPending != null) lastActionPending.committed = true;
       if(active && pending != null) pending.committed = true;
    }
 
    public static function stable(manager:CardManager, flow:GwintGameFlowController, seat:int, round:int) : void
    {
+      if(lastActionPending != null && lastActionPending.committed)
+      {
+         try
+         {
+            var aSeat:int = int(lastActionPending.seat);
+            var oSeat:int = aSeat == 0 ? 1 : 0;
+            var tx:Object = lastActionPending.transaction;
+            var tid:int = (tx != null && tx.source != null) ? int(tx.source.template_id) : 0;
+            var rowCode:int = tx != null ? slotToRowCode(int(tx.target_slot)) : 0;
+            var isLeader:Boolean = tx != null && tx.source != null && int(tx.target_slot) == CardManager.CARD_LIST_LOC_LEADER;
+            var sAct:int = int(manager.currentPlayerScores[aSeat]);
+            var sOpp:int = int(manager.currentPlayerScores[oSeat]);
+            var hAct:int = manager.getCardInstanceList(CardManager.CARD_LIST_LOC_HAND,aSeat).length;
+            var hOpp:int = manager.getCardInstanceList(CardManager.CARD_LIST_LOC_HAND,oSeat).length;
+            var oppP:Boolean = flow.playerControllers[oSeat].currentRoundStatus == BasePlayerController.ROUND_PLAYER_STATUS_DONE;
+            publicHistory.push({
+               seat:aSeat,
+               kind:isLeader ? 3 : 1,
+               template_id:tid,
+               round_index:round > 0 ? round - 1 : 0,
+               row:isLeader ? 0 : rowCode,
+               score_actor:sAct,
+               score_opp:sOpp,
+               hand_actor:hAct,
+               hand_opp:hOpp,
+               opp_passed:oppP
+            });
+            // Remove played card from known hand if tracked; add decoyed target to known hand
+            var kh:Array = knownHands[aSeat] as Array;
+            var remIdx:int = kh.indexOf(tid);
+            if(remIdx >= 0) kh.splice(remIdx,1);
+            if(tid == 0 && tx != null && tx.target != null)
+            {
+               kh.push(int(tx.target.template_id));
+            }
+            syncRoundResults(manager);
+         }
+         catch(histErr:Error) {}
+      }
+      lastActionPending = null;
       if(!active || pending == null) return;
       if(pending.committed)
          emit({event:"action",seat:pending.seat,action_id:pending.action_id,
@@ -71,10 +192,30 @@ internal class GwaiPlayTrace
 
    public static function roundComplete(seat:int) : void
    {
-      if(!active) return;
       var manager:CardManager = CardManager.getInstance();
       var exhausted:Boolean = manager.getCardInstanceList(CardManager.CARD_LIST_LOC_HAND,seat).length == 0
          && !manager.getCardLeader(seat).canBeUsed;
+      try
+      {
+         var oSeat:int = seat == 0 ? 1 : 0;
+         var hAct:int = manager.getCardInstanceList(CardManager.CARD_LIST_LOC_HAND,seat).length;
+         var hOpp:int = manager.getCardInstanceList(CardManager.CARD_LIST_LOC_HAND,oSeat).length;
+         publicHistory.push({
+            seat:seat,
+            kind:2,
+            template_id:0,
+            round_index:recordedRounds,
+            row:0,
+            score_actor:int(manager.currentPlayerScores[seat]),
+            score_opp:int(manager.currentPlayerScores[oSeat]),
+            hand_actor:hAct,
+            hand_opp:hOpp,
+            opp_passed:false
+         });
+         syncRoundResults(manager);
+      }
+      catch(passHistErr:Error) {}
+      if(!active) return;
       if(exhausted) emit({event:"round_complete",seat:seat,reason:"no_cards"});
       else emit({event:"pass",seat:seat});
    }

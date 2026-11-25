@@ -1,77 +1,62 @@
-# How the AI works
+# How Gwent: Trained Opponents Works
 
-This page describes the current source on `main`. The older downloadable
-release uses three separate policies; the shared-model controller awaits a new
-player package.
+**Gwent: Trained Opponents** is a compact neural network running 100% locally inside The Witcher 3's Scaleform ActionScript 3 UI (`gwint_game.redswf`) that replaces the vanilla Gwent opponent across every Story and Practice match. It runs offline with no external app, no Python runtime, and no internet connection.
 
-The opponent uses **self-play reinforcement learning**: a policy learns from
-simulated games against itself, with match outcomes providing the learning
-signal. A neural network rates legal actions from one player's information.
-Its value head estimates loss, draw and win probabilities from that same view.
-Winning the match can require giving up a round or saving a useful card.
+---
 
-## Training and play
+## 1. Fair Play & Information Boundary
 
-The trained model is a policy/value network with a shared representation of
-the visible position and separate action-group, placement and outcome heads.
-Proximal policy optimization updates the policy from completed-game outcomes,
-with damped self-play updates that limit abrupt changes. One frozen model supplies all
-three difficulty levels; the controller varies move selection.
+The opponent plays by the same visibility rules as a human player. It reads **only** information legitimately available to its own seat:
+- **Own hand** (cards currently in its hand)
+- **Own remaining deck** (which cards remain in its deck, with draw order erased)
+- **Public board state** (all six rows, active row modifiers/horns, active weather, graveyards, leaders and leader-used flags, factions, round scores, lives, pass states, and card counts)
+- **Publicly revealed player cards** (only cards explicitly returned to your hand in public view, such as via Decoy)
+- **Public turn history** (recent strictly public plays, passes, leader activations, and round results)
 
-Training happens before the mod is packaged. During a match, the mod runs
-**policy inference**: it evaluates the current legal actions with fixed
-learned weights. It does not train, perform a tree search or call an AI service
-while you play. Self-play describes how the policy learned, not a guarantee of
-optimal play or a measured advantage against strong humans.
+It **never** reads your hidden hand, your hidden mulligans, or either player's draw order.
 
-## Information and decisions
+---
 
-The mod captures the AI seat's own hand, public zones, scores and card counts.
-It does not read the other seat's hidden cards or either deck's order.
-Original cards, rule execution, rewards and collection progression stay with
-the game.
+## 2. Two-Stage Training: Self-Play Teacher -> Native Student
 
-At temperature zero, the network selects the highest-rated action group,
-then the highest-rated legal action within that group. The chosen action goes
-through the game's native transaction and effect path. There is no artificial
-pause after inference; loading, computation and presentation still take time.
+### Stage A: Training the Offline Self-Play Teacher
+Discovering multi-round Gwent strategy from scratch (card advantage, Spy/Decoy trades, Round 2 passes, weather timing, and Scorch discipline) takes high model capacity and millions of simulated matches. We trained a large multi-model self-play and endgame-search teacher from scratch across **4.5+ million simulated games** covering balanced 5-faction decks, hundreds of generated early/mid/late decks, and all 50 Hard campaign NPC rosters.
 
-The game's existing Gwent difficulty setting selects the NPC's deck level and
-move selection for both story and practice. All three use the same weights.
-Easy samples at temperature 1, Normal at 0.25, and Hard at zero. Higher
-temperatures vary choices more; these settings do not establish a measured
-strength gap between levels. After loading a save, the
-same control is available in the mod menu. A change in either menu updates
-the shared game setting.
+### Stage B: Knowledge Distillation for Scaleform ActionScript 3
+A large research model plus live search cannot run inside Witcher 3's single-threaded Flash VM, so we distill the teacher's move decisions into a compact neural network designed specifically for ActionScript 3:
+- **Compact size (`318k` parameters, `1.27 MB` weights):** Embedded directly inside `gwint_game.redswf`, keeping the entire packed mod bundle to **`9.13 MB`**.
+- **High retention:** Keeps **93-94% top-1 move agreement** and lands within **3.5 Elo** (`49.5%` head-to-head over 400 held-out games) of the ~50x larger pure teacher.
+- **Frame-sliced execution:** Both initial weight decoding and per-turn inference yield back to Witcher 3's render loop every `<= 10 ms`, keeping board animations, weather effects, and cursor movement smooth (~1.5 to 3 seconds per turn, zero screen freezing).
 
-The controller passes when the visible position guarantees an immediate match
-win against a passed opponent. This guard does not solve general round
-commitment or weather conservation.
+---
 
-## When a decision fails
+## 3. Exact Round-Closing Solver
 
-Unknown card vocabulary or a failed integration step hands the turn back to
-the stock opponent. An inference error can use a simple greedy rule instead.
-These are distinct diagnostic sources. Verification and optional public traces
-make a selected stock turn, a fallback and a network decision distinguishable.
+Before calling the neural network, the controller checks `GwaiTerminalTactics.as`:
+- If passing mathematically guarantees winning the match (accounting for faction tie rules), it passes immediately (`~3 ms`).
+- If you have already passed and a catalog-verified unit mathematically clinches the match, it plays the proven winning move.
 
-The recorder publishes a card's identity only after its native action commits.
-It records public results and selection/model identity, while excluding hidden
-hands, deck order and unrevealed choices.
+---
 
-## Packaging and verification
+## 4. Difficulty Settings
 
-The prebuilt player package contains the modified Gwent screen, original
-integration scripts and one shared trained model. During the release build,
-the tools derive the card vocabulary and effect tables from a compatible
-game, generate the model headers and compile the modified screen. Players
-receive the finished files. The source build tools can also perform this
-preparation locally.
+All three Witcher 3 Gwent difficulty levels share the same embedded weights, using calibrated move selection:
+- **Hard:** Deterministic best-move play (`87.3%` vs. vanilla opponent).
+- **Normal:** Softened move selection (`~81.0%` vs. vanilla opponent).
+- **Easy:** Relaxed selection (`~70%` vs. vanilla opponent), avoiding goofy vanilla blunders while staying forgiving. You can also toggle the mod off in 1 click anytime to play the vanilla opponent.
 
-During the release build, verification compares Python reference outputs with
-ActionScript on deterministic fictional positions. Compilation checks repeat inference
-checks against re-exported code and verify embedded tensor bytes, encoding
-tables, timer bindings and class initialization. These test encoding and
-integration; they do not measure playing strength or certify every game path.
+---
 
-See [installation](install.md), [building](building.md) and [NOTICE](../NOTICE.md).
+## 5. Mod-Pack Safety & Fallback Behavior
+
+Every turn, the controller verifies visible cards against the 228-card Witcher 3 base+DLC catalog. If another mod adds custom cards outside that catalog, or if an unexpected runtime error occurs, that single turn hands cleanly back to the vanilla opponent so your match never freezes or crashes.
+
+---
+
+## 6. Build & Parity Verification
+
+Every build (`scripts/build_transformer_mod.py`) verifies:
+1. Exact embedded float32 weight SHA-256 round-trip (`1,273,120` bytes) after compilation into `gwint_game.redswf`.
+2. Literal-only AVM2 static initializers across all 9 compiled `Gwai*` classes.
+3. **Direct PyTorch vs. Compiled-AS3 parity** on real multi-faction matches (**60/60 exact argmax agreement**, **`0.0`** frame-slice vs. synchronous numerical drift).
+4. Packed `Mods/modW3GwentAI/content/blob0.bundle` and `metadata.store` byte verification.

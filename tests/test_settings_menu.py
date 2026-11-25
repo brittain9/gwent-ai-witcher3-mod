@@ -160,6 +160,7 @@ for(const hasMods of [false,true])for(const isMainMenu of [false,true]){
  const rows=page.values.subElements.items,ownRows=rows.filter(o=>o.values.id!=='GwentDifficulty');
  assert.equal(rows.length,isMainMenu?6:7);assert.equal(rows.filter(o=>o.values.id==='GwentDifficulty').length,isMainMenu?0:1);
  assert.deepEqual(ownRows.map(o=>o.values.id),expected.map(o=>o.id));
+ if(!isMainMenu)assert.equal(rows.findIndex(o=>o.values.id==='GwentDifficulty'),rows.findIndex(o=>o.values.id==='GwaiEnabled')+1);
  for(let i=0;i<ownRows.length;i++){
   const row=ownRows[i].values,spec=expected[i];assert.equal(row.label,spec.label);assert.equal(row.type,kinds[spec.kind]);
   assert.equal(row.indent,spec.indent);assert.equal(row.groupID,sentinel);assert.equal(row.tag,spec.id);

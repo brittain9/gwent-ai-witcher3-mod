@@ -21,6 +21,7 @@ from scripts.harvest_playtrace import (
     timeline,
     validate_events,
 )
+from shared_player.terminal_composition import terminal_trace
 from tests.test_mod_package import MINI_HELPERS
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,8 +51,10 @@ def js_body(source: str, method: str) -> str:
     )
 
 
-def helper_javascript() -> str:
+def helper_javascript(*, composed: bool = False) -> str:
     source = mod_trace.helper_source("test-build")
+    if composed:
+        source = terminal_trace(source)
     body = source[source.index("{") + 1 : source.rfind("}")]
     body = re.sub(r"private static var", "var", body)
     body = re.sub(r"(?:public|private) static function", "function", body)
@@ -220,12 +223,18 @@ decision('network','play PRIVATE-CHOICE network 1ms'); roundComplete(0);
 assert.equal(events.length,0); assert.equal(calls.length,0);
 begin(true,manager,flow,1);
 const selection={enabled:true,requested_tier:2,effective_tier:3,mode:'story',opponent:'Lambert',
- npc_difficulty:2,checkpoint_sha256:'a'.repeat(64),weights_sha256:'b'.repeat(64),secret:'PRIVATE-HAND'};
+ npc_difficulty:2,checkpoint_sha256:'a'.repeat(64),weights_sha256:'b'.repeat(64),
+ controller_source_kind:'network',secret:'PRIVATE-HAND'};
 decision('network','play PRIVATE-CHOICE network 1ms',selection);
 assert.equal(events.at(-1).selection.effective_tier,3);
 assert.equal(events.at(-1).selection.requested_tier,2);
 assert.equal(events.at(-1).selection.checkpoint_sha256,'a'.repeat(64));
+assert.equal(events.at(-1).selection.controller_source_kind,'network');
 assert.equal(events.at(-1).selection.secret,undefined);
+selection.controller_source_kind='terminal-pass-guard';
+decision('rule','PRIVATE-CHOICE',selection);
+selection.controller_source_kind='fair-search-v1';
+decision('search','PRIVATE-CHOICE',selection);
 decision('vanilla','vocabulary failed: TypeError: Error #1009 PRIVATE-CHOICE');
 const card={instanceId:20,templateId:100,templateRef:{title:'Scorch'},owningPlayer:1,listsPlayer:1,getTotalPower(){return 0}};
 const transaction={sourceCardInstanceRef:card,targetCardInstanceRef:null,targetSlotID:-1,targetPlayerID:-1};
@@ -260,13 +269,49 @@ GwintGameMenu.mSingleton.dispatchEvent=()=>{throw Error('sink failed')};
 assert.doesNotThrow(()=>begin(true,manager,flow,1));
 assert.doesNotThrow(()=>roundComplete(0));assert.equal(events.length,count);
 console.log(JSON.stringify(completed));
-""".replace("HELPER", helper_javascript())
+""".replace("HELPER", helper_javascript(composed=True))
         events = json.loads(run_node(harness))
-        validate_events(events, "test-build", "final")
         selected = next(event for event in events if "selection" in event)
-        selected["selection"]["hand"] = ["hidden"]
-        with self.assertRaisesRegex(PlayTraceError, "unexpected fields"):
-            validate_events(events, "test-build", "final")
+        self.assertEqual(
+            [
+                (event["source"], event["selection"]["controller_source_kind"])
+                for event in events
+                if event.get("source") in {"rule", "search"}
+            ],
+            [("rule", "terminal-pass-guard"), ("search", "fair-search-v1")],
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "settings"
+            for source in (
+                "",
+                "network",
+                "vanilla",
+                "terminal-pass-guard",
+                "nilfgaard-terminal-pass",
+                "positive-unit-closure",
+                "fair-search-v1",
+            ):
+                selected["selection"]["controller_source_kind"] = source
+                path.write_text(settings_text(events, "final"))
+                self.assertEqual(read_traces(path)["t000000001"]["events"], events)
+            for source in ("private card", None, []):
+                selected["selection"]["controller_source_kind"] = source
+                path.write_text(settings_text(events, "final"))
+                with self.assertRaisesRegex(
+                    PlayTraceError, "invalid controller source"
+                ):
+                    read_traces(path)
+            selected["selection"]["controller_source_kind"] = "network"
+            rule = next(event for event in events if event.get("source") == "rule")
+            rule["source"] = "private data"
+            path.write_text(settings_text(events, "final"))
+            with self.assertRaisesRegex(PlayTraceError, "unknown decision source"):
+                read_traces(path)
+            rule["source"] = "rule"
+            selected["selection"]["hand"] = ["hidden"]
+            path.write_text(settings_text(events, "final"))
+            with self.assertRaisesRegex(PlayTraceError, "unexpected fields"):
+                read_traces(path)
 
     def test_sink_flushes_every_event_retains_interrupted_matches_and_never_reuses_keys(
         self,

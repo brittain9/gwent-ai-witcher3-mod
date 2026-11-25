@@ -111,6 +111,7 @@ def policy_only_controller() -> dict:
         "mode": "policy-only",
         "difficulties": {
             str(level): {
+                "selector": "group-first",
                 "temperature": 0.0,
                 "planning_worlds": 0,
                 "rollout_primary_turns": 0,
@@ -135,7 +136,7 @@ class SharedPlayerBundleTests(unittest.TestCase):
             loaded = load_bundle(output)
 
             self.assertEqual(created, loaded.manifest)
-            self.assertEqual(created["format"], "witcher3-shared-policy-bundle-v1")
+            self.assertEqual(created["format"], "witcher3-shared-policy-bundle-v2")
             self.assertEqual(created["model"]["checkpoint_sha256"], "a" * 64)
             self.assertNotIn("tiers", created)
             self.assertNotIn("models", created)

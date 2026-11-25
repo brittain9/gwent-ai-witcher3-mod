@@ -27,6 +27,13 @@ internal class GwaiCapture
          playerObservation(manager,flow,CardManager.PLAYER_1,playerID,ownHand.length,opponentHandCount),
          playerObservation(manager,flow,CardManager.PLAYER_2,playerID,ownHand.length,opponentHandCount)
       ];
+      var ownDeckDef:GwintDeck = manager.playerDeckDefinitions[playerID];
+      var ownRemDeck:Array = [];
+      if(ownDeckDef != null && ownDeckDef.cardIndicesInDeck != null)
+      {
+         for(var deckIdx:int = 0; deckIdx < ownDeckDef.cardIndicesInDeck.length; deckIdx++)
+            ownRemDeck.push(int(ownDeckDef.cardIndicesInDeck[deckIdx]));
+      }
       var observation:Object = {
          seat:playerID,
          initiative:flow.gwaiPolicyInitiative(),
@@ -40,7 +47,10 @@ internal class GwaiCapture
          players:players,
          weather:cardList(manager.getCardInstanceList(CardManager.CARD_LIST_LOC_WEATHERSLOT,CardManager.PLAYER_INVALID)),
          pending_choice:null,
-         terminal:false
+         terminal:false,
+         own_rem_deck:ownRemDeck,
+         opp_known_hand:GwaiPlayTrace.knownOpponentHand(playerID),
+         public_history:GwaiPlayTrace.recentHistory()
       };
       var opponentController:BasePlayerController = flow.playerControllers[opponentID];
       return {

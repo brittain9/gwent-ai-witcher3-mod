@@ -7,6 +7,9 @@ internal class GwaiSharedController
    private var _ready:Boolean = false;
    private var _actionUniforms:Array = null;
    private var _terminalOnly:Boolean = false;
+   private var _proofCatalog:Object = null;
+   private var _proofHost:Function = null;
+   private var _evalJob:Object = null;
    public var done:Boolean = false;
    public var output:Object = null;
    public var value:Number = NaN;
@@ -27,6 +30,17 @@ internal class GwaiSharedController
          throw new Error("policy-only controller cannot simulate continuations");
       if(!isFinite(Number(this._settings.temperature)) || Number(this._settings.temperature) < 0)
          throw new Error("invalid shared controller temperature");
+      if(this._settings.selector != "group-first" && this._settings.selector != "joint-argmax") throw new Error("invalid shared controller selector");
+      if(this._settings.selector == "joint-argmax" && Number(this._settings.temperature) != 0) throw new Error("joint argmax requires zero temperature");
+   }
+
+   // Prototype host passes a public static catalog and a live, read-only view
+   // of existing ticket/actor/effect-applying assertions.
+   public function bindTerminalProof(catalog:Object, host:Function) : void
+   {
+      if(this._ready || this.done || catalog == null || host == null) throw new Error("invalid terminal proof binding");
+      this._proofCatalog = catalog;
+      this._proofHost = host;
    }
 
    public function begin(observation:Object, canonicalActions:Array) : void
@@ -98,12 +112,41 @@ internal class GwaiSharedController
             return true;
          }
       }
-      if(this._terminalOnly) throw new Error("terminal-only primary premise no longer holds");
-      this.modelCall = true;
-      var result:Object = GwaiNetPolicy.evaluate(
-         this._observation,this._legal,data.CARD_IDS,data.CARD_EFFECTS,
-         GwaiNetWeights.load(data),data.OFFSETS,data.WIDTH,data.BLOCKS,
-         Number(this._settings.temperature),String(data.OBSERVATION_PROFILE_ID),this._actionUniforms);
+      if(this._evalJob == null)
+      {
+         if(this._proofCatalog != null && this._proofHost != null)
+         {
+            var proven:Object = null;
+            try { proven = GwaiTerminalTactics.certify(this._observation,this._legal,this._proofCatalog,String(data.OBSERVATION_PROFILE_ID),this._proofHost()); }
+            catch(proofError:Error) { proven = null; }
+            if(proven != null)
+            {
+               this.output = this.copyData(proven.action);
+               this.value = NaN;
+               this.sourceKind = String(proven.source);
+               this.modelCall = false;
+               this.done = true; this._ready = false; this.status = "complete";
+               return true;
+            }
+         }
+         if(this._terminalOnly) throw new Error("terminal-only primary premise no longer holds");
+         // Frame-sliced base64 weight decoding on first turn (zero freeze!)
+         if(!GwaiNetWeights.isLoaded(data))
+         {
+            GwaiNetWeights.loadStep(data,2);
+            return false;
+         }
+         this.modelCall = true;
+         this._evalJob = GwaiTransformer.beginEval(
+            this._observation,this._legal,data,
+            GwaiNetWeights.load(data),
+            Number(this._settings.temperature),this._actionUniforms);
+         return false;
+      }
+      // Run <= 10ms of Transformer math per animation frame (smooth 60fps, ~1.5-2.2s turns, zero UI freeze!)
+      if(!GwaiTransformer.stepEval(this._evalJob,10)) return false;
+      var result:Object = this._evalJob.result;
+      this._evalJob = null;
       var chosen:Number = Number(result.chosen_index);
       if(!isFinite(chosen) || chosen != int(chosen) || chosen < 0 || chosen >= this._legal.length)
          throw new Error("shared model returned an invalid canonical index");
@@ -175,6 +218,7 @@ internal class GwaiSharedController
    {
       this._observation = null;
       this._legal = null;
+      this._evalJob = null;
       this._ready = false;
       this.output = null;
       this.value = NaN;
@@ -194,7 +238,7 @@ internal class GwaiSharedController
       var turn:Number = Number(observation.decision_id);
       if(typeof observation.decision_id != "number" || !isFinite(turn) || turn < 0 || turn != Math.floor(turn))
          throw new Error("shared observation needs a completed-primary-turn counter");
-      var allowed:Array = ["seat","to_move","initiative","decision_id","round","rounds_played","lives","scores","round_results","hand","players","weather","pending_choice","terminal"];
+      var allowed:Array = ["seat","to_move","initiative","decision_id","round","rounds_played","lives","scores","round_results","hand","players","weather","pending_choice","terminal","own_rem_deck","opp_known_hand","public_history"];
       for(var field:String in observation)
          if(allowed.indexOf(field) < 0) throw new Error("unsupported observation data field: " + field);
       if(observation.players == null || observation.players.length != 2)

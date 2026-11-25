@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-FORMAT = "witcher3-shared-policy-bundle-v1"
+FORMAT = "witcher3-shared-policy-bundle-v2"
 CONTROLLER_CONTRACT = "deployed-controller-v1"
 COUNTER_CONTRACT = "completed-primary-turns-v1"
 SELECTION_RULE = "served-group-first-v1"
@@ -228,7 +228,8 @@ def validate_metadata(value: Any) -> dict[str, Any]:
         value["export_sha256"] == value["weights_sha256"],
         "export and weight hashes differ",
     )
-    _integer(value["update_count"], "update_count", 0, (1 << 53) - 1)
+    if value["data_kind"] != "inference-only" or value["update_count"] is not None:
+        _integer(value["update_count"], "update_count", 0, (1 << 53) - 1)
     cards = _integer(value["card_count"], "card_count", 1, 10_000)
     width = _integer(value["width"], "width", 1, 2048)
     blocks = _integer(value["blocks"], "blocks", 1, 16)
@@ -294,7 +295,13 @@ def validate_controller(value: Any) -> dict[str, Any]:
         isinstance(levels, dict) and set(levels) == {"1", "2", "3"},
         "controller must configure native difficulties 1, 2 and 3",
     )
-    fields = {"temperature", "planning_worlds", "rollout_primary_turns", "deadline_ms"}
+    fields = {
+        "temperature",
+        "selector",
+        "planning_worlds",
+        "rollout_primary_turns",
+        "deadline_ms",
+    }
     for level, settings in levels.items():
         _need(
             isinstance(settings, dict) and set(settings) == fields,
@@ -307,7 +314,16 @@ def validate_controller(value: Any) -> dict[str, Any]:
             and temperature >= 0,
             "temperature must be finite and nonnegative",
         )
-        for field in fields - {"temperature"}:
+        selector = settings["selector"]
+        _need(
+            type(selector) is str and selector in {"group-first", "joint-argmax"},
+            "unsupported selector",
+        )
+        _need(
+            selector != "joint-argmax" or temperature == 0,
+            "joint argmax requires zero temperature",
+        )
+        for field in fields - {"temperature", "selector"}:
             _need(
                 type(settings[field]) is int and settings[field] == 0,
                 f"policy-only refuses nonzero {field}",
@@ -335,6 +351,78 @@ def _payload(path: Path, metadata: dict[str, Any]) -> bytes:
     return payload
 
 
+def serving_identity(controller: dict[str, Any]) -> dict[str, str]:
+    """Identify actual serving code and the canonical explicit controller settings."""
+    root = Path(__file__).resolve().parents[1] / "mod/ai/as3"
+    canonical = json.dumps(
+        controller, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode()
+    return {
+        "selection_rule": "configured-factorized-selector-terminal-tactics-v1",
+        "controller_config_sha256": hashlib.sha256(canonical).hexdigest(),
+        "policy_source_sha256": hashlib.sha256(
+            (root / "GwaiNetPolicy.as").read_bytes()
+        ).hexdigest(),
+        "controller_source_sha256": hashlib.sha256(
+            (root / "GwaiSharedController.as").read_bytes()
+        ).hexdigest(),
+        "capture_source_sha256": hashlib.sha256(
+            (root / "GwaiCapture.as").read_bytes()
+        ).hexdigest(),
+        "terminal_catalog_source_sha256": hashlib.sha256(
+            (root / "GwaiTerminalCatalog.as").read_bytes()
+        ).hexdigest(),
+        "terminal_tactics_source_sha256": hashlib.sha256(
+            (root / "GwaiTerminalTactics.as").read_bytes()
+        ).hexdigest(),
+        "terminal_host_source_sha256": hashlib.sha256(
+            b"\0".join(
+                (root.parents[2] / "shared_player" / name).read_bytes()
+                for name in (
+                    "host.py",
+                    "host_hooks.py",
+                    "terminal_composition.py",
+                    "terminal_tactics_host.py",
+                    "terminal_tactics_diagnostic.py",
+                    "compiler.py",
+                    "primary_counter.py",
+                    "owned_actions.py",
+                )
+            )
+        ).hexdigest(),
+    }
+
+
+def validate_serving_identity(value: Any, controller: dict[str, Any]) -> None:
+    fields = {
+        "selection_rule",
+        "controller_config_sha256",
+        "policy_source_sha256",
+        "controller_source_sha256",
+        "capture_source_sha256",
+        "terminal_catalog_source_sha256",
+        "terminal_tactics_source_sha256",
+        "terminal_host_source_sha256",
+    }
+    _need(
+        isinstance(value, dict) and set(value) == fields,
+        "explicit serving identity required",
+    )
+    _need(
+        value["selection_rule"] == "configured-factorized-selector-terminal-tactics-v1",
+        "unsupported serving selection rule",
+    )
+    for key in fields - {"selection_rule"}:
+        _sha(value[key], key)
+    canonical = json.dumps(
+        controller, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode()
+    _need(
+        value["controller_config_sha256"] == hashlib.sha256(canonical).hexdigest(),
+        "serving controller configuration identity differs",
+    )
+
+
 def load_bundle(directory: Path) -> SharedBundle:
     root = Path(directory)
     _need(
@@ -342,7 +430,8 @@ def load_bundle(directory: Path) -> SharedBundle:
     )
     manifest = _json(root / "manifest.json")
     _need(
-        set(manifest) == {"format", "model", "controller"}, "unexpected bundle fields"
+        set(manifest) == {"format", "model", "controller", "serving"},
+        "unexpected bundle fields",
     )
     _need(manifest["format"] == FORMAT, "unsupported shared bundle format")
     model = manifest["model"]
@@ -352,6 +441,7 @@ def load_bundle(directory: Path) -> SharedBundle:
     )
     metadata = validate_metadata({name: model[name] for name in METADATA_FIELDS})
     validate_controller(manifest["controller"])
+    validate_serving_identity(manifest["serving"], manifest["controller"])
     relative = f"weights/{metadata['weights_sha256']}.f32.bin"
     _need(model["weights_path"] == relative, "noncanonical shared weight path")
     actual = set()
@@ -396,6 +486,7 @@ def create_bundle(
         "format": FORMAT,
         "model": {**metadata, "weights_path": relative},
         "controller": settings,
+        "serving": serving_identity(settings),
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
@@ -502,6 +593,7 @@ def materialize(
         "card_ids": ids,
         "card_effects": effects,
         "weights_class_name": class_name,
+        "serving": loaded.manifest["serving"],
     }
     payload = _payload(loaded.weights_path, metadata)
     source = _header(payload, metadata, class_name)
